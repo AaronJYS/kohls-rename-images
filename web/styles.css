@@ -809,8 +809,12 @@ select:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
+#pdf-tool .workspace {
+  align-items: stretch;
+}
 .pdf-picker {
   min-height: 288px;
+  padding-block: 32px;
   transition: background 0.15s, box-shadow 0.15s;
 }
 .pdf-picker.drag-over {
