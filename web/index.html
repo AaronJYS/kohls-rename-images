@@ -43,12 +43,6 @@
             select.
           </p>
         </div>
-        <span class="local-badge"
-          ><svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="4" y="4" width="16" height="12" rx="2" />
-            <path d="M8 20h8m-4-4v4" /></svg
-          >Processed on your device</span
-        >
       </div>
 
       <noscript
@@ -91,7 +85,6 @@
                 <path d="M12 11v5m-2-2 2 2 2-2" /></svg
               ><span>Select folder</span>
             </button>
-            <p class="picker-note">Chrome or Edge on Windows and macOS</p>
           </div>
           <div class="destination">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -274,7 +267,6 @@
             <h1>Purchase orders in. Spreadsheets out.</h1>
             <p class="intro">Turn AAFES purchase order PDFs into organized Excel files.</p>
           </div>
-          <span class="local-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8m-4-4v4"/></svg>Processed on your device</span>
         </div>
 
         <div id="pdf-message" class="notice" role="status" aria-live="polite" hidden></div>
@@ -290,7 +282,6 @@
               <p>Choose one file or a batch. Each gets its own workbook.</p>
               <input id="pdf-files" type="file" accept=".pdf,application/pdf" multiple hidden />
               <button id="select-pdfs" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5"/></svg><span>Select PDFs</span></button>
-              <p class="picker-note">Text-based AAFES PDFs · Up to 50 MB per file</p>
             </div>
             <div id="pdf-queue" class="pdf-queue" hidden>
               <div class="queue-heading"><span id="pdf-file-count" class="field-label"></span><button id="clear-pdfs" class="text-button" type="button">Clear all</button></div>
@@ -304,7 +295,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9a3 3 0 0 0 3 3h11m-4-4 4 4-4 4"/></svg>
               <div><span class="field-label">EXCEL OUTPUT</span><p id="pdf-output-name" class="output-filename">Your file_extracted.xlsx</p></div>
             </div>
-            <div class="pdf-source-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg><p>Use the original AAFES “Stand-alone Order” PDF. Scans and photographs need OCR before conversion.</p></div>
+            <div class="pdf-source-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg><p>Supports text-based PDFs only</p></div>
           </section>
 
           <aside class="rules-panel" aria-labelledby="pdf-rules-heading">
