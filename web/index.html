@@ -129,37 +129,55 @@
         <aside class="rules-panel" aria-labelledby="rules-heading">
           <p class="eyebrow">THE NAMING RULES</p>
           <h2 id="rules-heading">One consistent format.</h2>
-          <div class="format-example">
-            <span>51104</span><b>_</b><span>Black</span><b>_</b
-            ><strong>MAIN</strong><span>.jpg</span>
+          <div class="example-columns" aria-hidden="true">
+            <span>Original filename</span><span></span
+            ><span>Renamed filename</span>
           </div>
-          <div class="format-labels">
-            <span>Style</span><span>Color</span><span>View</span>
-          </div>
-          <dl class="rules-list">
-            <div>
-              <dt>MAIN</dt>
-              <dd>Shot (1), or the first available shot.</dd>
-            </div>
-            <div>
-              <dt>ALT, ALT2…</dt>
-              <dd>Remaining shots, in numbered order.</dd>
-            </div>
-            <div>
-              <dt>DIMS</dt>
-              <dd>Dimensions and measurement images.</dd>
-            </div>
-            <div>
-              <dt>GENAI</dt>
-              <dd>Added for filenames marked as AI.</dd>
-            </div>
-          </dl>
-          <div class="rules-note">
-            <p>Color codes like <code>BK</code> become <code>Black</code>.</p>
-            <p>
-              Image formats stay the same. Other files are copied with their
-              original names.
-            </p>
+          <ul class="naming-examples" aria-label="Filename renaming examples">
+            <li class="naming-example">
+              <code class="example-before">51104.BK (1).jpg</code>
+              <span class="example-arrow" aria-hidden="true">→</span>
+              <span class="sr-only">becomes</span>
+              <code class="example-after"
+                >51104_Black_<strong>MAIN</strong>.jpg</code
+              >
+            </li>
+            <li class="naming-example">
+              <code class="example-before">51104.BK (2).jpg</code>
+              <span class="example-arrow" aria-hidden="true">→</span>
+              <span class="sr-only">becomes</span>
+              <code class="example-after"
+                >51104_Black_<strong>ALT</strong>.jpg</code
+              >
+            </li>
+            <li class="naming-example">
+              <code class="example-before">51104.BK (3).jpg</code>
+              <span class="example-arrow" aria-hidden="true">→</span>
+              <span class="sr-only">becomes</span>
+              <code class="example-after"
+                >51104_Black_<strong>ALT2</strong>.jpg</code
+              >
+            </li>
+            <li class="naming-example">
+              <code class="example-before">22003_Black (1).jpg</code>
+              <span class="example-arrow" aria-hidden="true">→</span>
+              <span class="sr-only">becomes</span>
+              <code class="example-after"
+                >22003_Black_<strong>MAIN</strong>.jpg</code
+              >
+            </li>
+            <li class="naming-example">
+              <code class="example-before">51104.BK dims.jpg</code>
+              <span class="example-arrow" aria-hidden="true">→</span>
+              <span class="sr-only">becomes</span>
+              <code class="example-after"
+                >51104_Black_<strong>DIMS</strong>.jpg</code
+              >
+            </li>
+          </ul>
+          <div class="naming-notes">
+            <p><code>GENAI</code> is added for filenames marked as AI.</p>
+            <p>File formats stay the same. Other files keep their names.</p>
           </div>
         </aside>
       </div>
