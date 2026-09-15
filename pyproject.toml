@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kohls-rename-img"
+version = "1.0.0"
+description = "Copy an image folder and rename its contents to retailer spec (MAIN / ALT / DIMS / GENAI)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Proprietary" }
+authors = [{ name = "JYS Enterprise" }]
+keywords = ["images", "rename", "retail", "kohls", "pim"]
+dependencies = []
+
+[project.scripts]
+rename-images = "rename_images:main"
+
+[tool.setuptools]
+py-modules = ["rename_images"]

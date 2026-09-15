@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Prepare product image filenames for Kohl's. Preview names and save a renamed copy locally, inside your selected folder."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="color-scheme" content="light" />
+    <title>Kohl’s Image Renamer · JYS Enterprise</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238b2145'/%3E%3Cpath d='M8 8v16m1-7L22 8M13 15l10 9' stroke='white' stroke-width='3' fill='none'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Image Renamer home"
+        ><span class="brand-mark" aria-hidden="true">K</span
+        ><span>Image Renamer</span></a
+      >
+      <span class="organization">JYS ENTERPRISE</span>
+    </header>
+    <main>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">KOHL’S IMAGE PREP</p>
+          <h1>A folder in. Ready-to-use names out.</h1>
+          <p class="intro">
+            Create a renamed copy of your product images inside the folder you
+            select.
+          </p>
+        </div>
+        <span class="local-badge"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="12" rx="2" />
+            <path d="M8 20h8m-4-4v4" /></svg
+          >Processed on your device</span
+        >
+      </div>
+
+      <noscript
+        ><div class="notice error">
+          Enable JavaScript to use the image renamer.
+        </div></noscript
+      >
+      <div id="compatibility" class="notice error" role="alert" hidden></div>
+      <div
+        id="message"
+        class="notice"
+        role="status"
+        aria-live="polite"
+        tabindex="-1"
+        hidden
+      ></div>
+
+      <div class="workspace">
+        <section class="source-panel" aria-labelledby="source-heading">
+          <div class="panel-heading">
+            <h2 id="source-heading">
+              <span class="step">01</span>Select your images
+            </h2>
+            <span id="source-status" class="muted">Ready when you are</span>
+          </div>
+          <div class="folder-picker">
+            <svg class="folder-icon" viewBox="0 0 56 48" aria-hidden="true">
+              <path
+                d="M5 10a4 4 0 0 1 4-4h12l6 6h20a4 4 0 0 1 4 4v23a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z"
+              />
+              <path d="M5 18h46" />
+            </svg>
+            <h3 id="folder-title">Choose a product image folder</h3>
+            <p id="folder-description">
+              Subfolders and other files come along, too.
+            </p>
+            <button id="select-folder" class="button primary" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3Z" />
+                <path d="M12 11v5m-2-2 2 2 2-2" /></svg
+              ><span>Select folder</span>
+            </button>
+            <p class="picker-note">Chrome or Edge on Windows and macOS</p>
+          </div>
+          <div class="destination">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 4v9a3 3 0 0 0 3 3h11m-4-4 4 4-4 4" />
+            </svg>
+            <div>
+              <span class="field-label">OUTPUT LOCATION</span>
+              <p id="output-path">Your folder / Your folder_Kohl</p>
+            </div>
+          </div>
+          <details class="options">
+            <summary>Naming options</summary>
+            <div class="options-content">
+              <label class="file-label" for="color-file"
+                >Custom color map
+                <span class="muted">(optional CSV: code,name)</span></label
+              >
+              <div class="file-controls">
+                <input
+                  id="color-file"
+                  type="file"
+                  accept=".csv,text/csv"
+                /><button
+                  id="reset-colors"
+                  class="text-button"
+                  type="button"
+                  hidden
+                >
+                  Reset
+                </button>
+              </div>
+              <p id="color-status" class="muted small">
+                Using the built-in color map.
+              </p>
+              <label class="checkbox-label"
+                ><input id="strict-colors" type="checkbox" />Require every color
+                to be recognized</label
+              >
+            </div>
+          </details>
+        </section>
+
+        <aside class="rules-panel" aria-labelledby="rules-heading">
+          <p class="eyebrow">THE NAMING RULES</p>
+          <h2 id="rules-heading">One consistent format.</h2>
+          <div class="format-example">
+            <span>51104</span><b>_</b><span>Black</span><b>_</b
+            ><strong>MAIN</strong><span>.jpg</span>
+          </div>
+          <div class="format-labels">
+            <span>Style</span><span>Color</span><span>View</span>
+          </div>
+          <dl class="rules-list">
+            <div>
+              <dt>MAIN</dt>
+              <dd>Shot (1), or the first available shot.</dd>
+            </div>
+            <div>
+              <dt>ALT, ALT2…</dt>
+              <dd>Remaining shots, in numbered order.</dd>
+            </div>
+            <div>
+              <dt>DIMS</dt>
+              <dd>Dimensions and measurement images.</dd>
+            </div>
+            <div>
+              <dt>GENAI</dt>
+              <dd>Added for filenames marked as AI.</dd>
+            </div>
+          </dl>
+          <div class="rules-note">
+            <p>Color codes like <code>BK</code> become <code>Black</code>.</p>
+            <p>
+              Image formats stay the same. Other files are copied with their
+              original names.
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      <section
+        id="preview"
+        class="preview-panel"
+        aria-labelledby="preview-heading"
+        hidden
+      >
+        <div class="panel-heading preview-heading">
+          <h2 id="preview-heading">
+            <span class="step">02</span>Review the filenames
+          </h2>
+          <span id="summary" class="muted"></span>
+        </div>
+        <div id="stats" class="stats"></div>
+        <details id="warnings" class="warnings" hidden>
+          <summary id="warnings-summary">Items to review</summary>
+          <ul id="warnings-list"></ul>
+        </details>
+        <div class="table-scroll" tabindex="0" aria-label="Filename preview">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Original filename</th>
+                <th scope="col">Output filename</th>
+                <th scope="col">View</th>
+              </tr>
+            </thead>
+            <tbody id="preview-body"></tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="page-label" class="muted small"></span>
+          <div class="pagination">
+            <button id="previous-page" class="text-button" type="button">
+              Previous</button
+            ><button id="next-page" class="text-button" type="button">
+              Next
+            </button>
+          </div>
+        </div>
+        <div id="progress-area" class="progress-area" hidden>
+          <div>
+            <span id="progress-label">Preparing your copy…</span
+            ><button id="cancel-copy" class="text-button" type="button">
+              Stop
+            </button>
+          </div>
+          <progress
+            id="progress"
+            max="100"
+            value="0"
+            aria-label="Copy progress"
+          ></progress>
+          <p id="progress-file" class="muted small"></p>
+        </div>
+        <div class="action-bar">
+          <div>
+            <h3 id="action-title">Ready to create your copy?</h3>
+            <p id="action-description">
+              The new folder includes a CSV log of the filenames.
+            </p>
+          </div>
+          <button
+            id="create-folder"
+            class="button primary"
+            type="button"
+            disabled
+          >
+            Create renamed folder<svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14m-5-5 5 5-5 5" />
+            </svg>
+          </button>
+        </div>
+      </section>
+      <footer class="page-footer">
+        <span>Files stay on your device. Nothing is uploaded.</span
+        ><span>Original files are preserved.</span>
+      </footer>
+    </main>
+  </body>
+</html>
