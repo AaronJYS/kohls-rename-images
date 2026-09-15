@@ -6,6 +6,8 @@
   line-height: 1.5;
   --accent: #8b2145;
   --accent-dark: #6e1534;
+  --accent-soft: #f6ebef;
+  --accent-icon: #f8eef2;
   --border: #e2e3e8;
   --muted: #676772;
   --paper: #fff;
@@ -164,7 +166,7 @@ h2 {
   font-size: 12px;
   font-weight: 650;
   color: var(--accent);
-  background: #f6ebef;
+  background: var(--accent-soft);
   border-radius: 5px;
   padding: 4px 7px;
 }
@@ -190,7 +192,7 @@ h2 {
   color: var(--accent);
   stroke-width: 1.5;
   margin-bottom: 13px;
-  fill: #f8eef2;
+  fill: var(--accent-icon);
 }
 .folder-picker h3 {
   font-size: 18px;
@@ -749,5 +751,271 @@ progress::-moz-progress-bar {
   * {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Shared tool navigation and the AAFES workflow use the same type and controls. */
+body[data-tool="pdf"] {
+  --accent: #276653;
+  --accent-dark: #1c4c3e;
+  --accent-soft: #eaf3ee;
+  --accent-icon: #edf5f0;
+  --focus: #5e9c85;
+}
+.tool-nav {
+  display: flex;
+  align-self: stretch;
+  gap: 34px;
+  margin-left: 64px;
+}
+.tool-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tool-link svg {
+  width: 18px;
+  height: 18px;
+}
+.tool-link:hover,
+.tool-link[aria-current] {
+  color: var(--accent);
+}
+.tool-link[aria-current]::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 3px 3px 0 0;
+}
+.tool-link:focus-visible {
+  outline-offset: -5px;
+}
+select {
+  font: inherit;
+}
+select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.pdf-picker {
+  min-height: 288px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.pdf-picker.drag-over {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.output-filename {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.destination > div {
+  min-width: 0;
+}
+.pdf-source-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding: 17px var(--panel-gutter);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.pdf-source-note svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+}
+.pdf-rules-intro {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+.workbook-fields {
+  margin: 24px 0 0;
+  border-top: 1px solid var(--border);
+}
+.workbook-fields > div {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 18px;
+  padding: 15px 0;
+  border-bottom: 1px solid #eeedf0;
+}
+.workbook-fields dt {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.85;
+}
+.workbook-fields dd {
+  margin: 2px 0 0;
+}
+.format-label {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  padding: 3px 7px;
+}
+.workbook-fields dd p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 7px;
+}
+.pdf-queue {
+  padding: 0 var(--panel-gutter);
+  border-top: 1px solid var(--border);
+}
+.queue-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+}
+.pdf-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+  max-height: 264px;
+  overflow-y: auto;
+}
+.pdf-file-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 0;
+  border-top: 1px solid #eeedf0;
+}
+.pdf-file-list li > div {
+  min-width: 0;
+}
+.pdf-file-name,
+.pdf-file-status {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.pdf-file-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pdf-file-status {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.file-error {
+  color: #8b2a2e;
+}
+.preview-file {
+  max-width: 340px;
+  min-width: 0;
+}
+.select-field {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: #47434c;
+  font-size: 13px;
+  padding: 9px 12px;
+  text-overflow: ellipsis;
+}
+.pdf-table {
+  min-width: 2280px;
+}
+.pdf-table th,
+.pdf-table td {
+  padding: 13px 18px;
+  min-width: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.pdf-table td {
+  font-family: inherit;
+  font-size: 13px;
+}
+.pdf-table .numeric {
+  text-align: right;
+}
+.download-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.secondary {
+  border-color: #cfd9d4;
+  color: var(--accent);
+  background: #fff;
+}
+.secondary:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+@media (max-width: 1050px) {
+  .tool-nav {
+    margin-left: 40px;
+    gap: 25px;
+  }
+  .download-actions {
+    flex-wrap: wrap;
+  }
+  #pdf-source-status {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .site-header {
+    height: auto;
+    align-items: stretch;
+    flex-direction: column;
+    padding-top: 16px;
+  }
+  .tool-nav {
+    margin: 9px 0 0;
+    min-height: 49px;
+    gap: 28px;
+  }
+  .tool-link {
+    font-size: 11px;
+    letter-spacing: 0.2px;
+    gap: 7px;
+  }
+  .pdf-picker {
+    min-height: 275px;
+  }
+  .preview-file {
+    width: 100%;
+    max-width: none;
+  }
+  .select-field {
+    width: 100%;
+  }
+  .download-actions {
+    flex-direction: column;
+  }
+}
+@media (max-width: 380px) {
+  .tool-nav {
+    gap: 20px;
+  }
+  .tool-link svg {
+    display: none;
   }
 }

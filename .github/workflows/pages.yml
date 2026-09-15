@@ -33,7 +33,12 @@ jobs:
           node --check web/app.js
           node --check web/renamer.js
           node --check web/folder-io.js
-      - name: Verify naming parity and file copying
+          node --check web/aafes-parser.js
+          node --check web/pdf-reader.js
+          node --check web/excel-export.js
+          node --check web/pdf-app.js
+          node --check web/tool-nav.js
+      - name: Verify image conversion, PDF extraction, and Excel output
         run: npm test
 
   deploy:
