@@ -9,6 +9,10 @@
   --border: #e2e3e8;
   --muted: #676772;
   --paper: #fff;
+  --content-width: 1240px;
+  --page-gutter: 32px;
+  --panel-gutter: 26px;
+  --focus: #be6382;
 }
 * {
   box-sizing: border-box;
@@ -58,7 +62,7 @@ a:focus-visible,
 input:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid #be6382;
+  outline: 3px solid var(--focus);
   outline-offset: 4px;
 }
 [hidden] {
@@ -66,7 +70,11 @@ summary:focus-visible,
 }
 .site-header {
   height: 80px;
-  padding: 0 5%;
+  padding: 0
+    max(
+      var(--page-gutter),
+      calc((100% - var(--content-width)) / 2 + var(--page-gutter))
+    );
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -80,9 +88,9 @@ summary:focus-visible,
   color: var(--muted);
 }
 main {
-  max-width: 1240px;
+  max-width: var(--content-width);
   margin: 0 auto;
-  padding: 46px 32px 26px;
+  padding: 46px var(--page-gutter) 26px;
 }
 .page-heading {
   display: flex;
@@ -131,7 +139,7 @@ h1 {
   overflow: hidden;
 }
 .panel-heading {
-  padding: 22px 26px;
+  padding: 22px var(--panel-gutter);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -217,7 +225,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 17px 26px;
+  padding: 17px var(--panel-gutter);
   border-top: 1px solid var(--border);
   background: #fafafb;
 }
@@ -241,12 +249,15 @@ h2 {
   font-size: 14px;
 }
 .options summary {
-  padding: 14px 26px;
+  padding: 14px var(--panel-gutter);
   color: #57545f;
   cursor: pointer;
 }
+.options summary:focus-visible {
+  outline-offset: -4px;
+}
 .options-content {
-  padding: 0 26px 22px;
+  padding: 0 var(--panel-gutter) 22px;
 }
 .file-label {
   display: block;
@@ -415,7 +426,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 28px;
-  padding: 20px 26px;
+  padding: 20px var(--panel-gutter);
   border-bottom: 1px solid var(--border);
 }
 .stat {
@@ -431,9 +442,24 @@ code {
   color: #38313a;
   font-weight: 600;
 }
+.table-frame {
+  position: relative;
+}
 .table-scroll {
   overflow: auto;
   max-height: 440px;
+}
+/* Keep the focus border inside the panel and above the sticky table header. */
+.table-frame:has(> .table-scroll:focus-visible)::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 3px solid var(--focus);
+  pointer-events: none;
+  z-index: 2;
+}
+.table-frame:has(> .table-scroll:focus-visible) > .table-scroll {
+  outline: none;
 }
 table {
   width: 100%;
@@ -453,7 +479,7 @@ th {
 }
 th,
 td {
-  padding: 13px 26px;
+  padding: 13px var(--panel-gutter);
   border-bottom: 1px solid #eeedf0;
 }
 td {
@@ -480,12 +506,12 @@ td:last-child {
 }
 .subpath {
   display: block;
-  color: #85808b;
+  color: var(--muted);
   font-size: 11px;
   margin-bottom: 2px;
 }
 .table-footer {
-  padding: 12px 26px;
+  padding: 12px var(--panel-gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -507,7 +533,7 @@ td:last-child {
   text-decoration: underline;
 }
 .action-bar {
-  padding: 23px 26px;
+  padding: 23px var(--panel-gutter);
   background: #fafafb;
   border-top: 1px solid var(--border);
   display: flex;
@@ -550,7 +576,7 @@ td:last-child {
 }
 .warnings {
   border-bottom: 1px solid #e7d5ac;
-  padding: 14px 26px;
+  padding: 14px var(--panel-gutter);
   font-size: 13px;
 }
 .warnings summary {
@@ -563,11 +589,14 @@ td:last-child {
   max-height: 200px;
   overflow: auto;
 }
+.warnings li {
+  overflow-wrap: anywhere;
+}
 .warnings li + li {
   margin-top: 5px;
 }
 .progress-area {
-  padding: 18px 26px;
+  padding: 18px var(--panel-gutter);
   border-top: 1px solid var(--border);
 }
 .progress-area > div {
@@ -603,7 +632,7 @@ progress::-moz-progress-bar {
   justify-content: space-between;
   gap: 20px;
   margin-top: 23px;
-  color: #7d7983;
+  color: var(--muted);
   font-size: 12px;
 }
 @media (min-width: 1400px) {
@@ -616,6 +645,9 @@ progress::-moz-progress-bar {
   }
 }
 @media (max-width: 1050px) {
+  :root {
+    --panel-gutter: 20px;
+  }
   .page-heading {
     display: block;
   }
@@ -629,23 +661,25 @@ progress::-moz-progress-bar {
     padding: 25px;
   }
   .panel-heading {
-    padding: 20px;
+    padding-block: 20px;
   }
   .panel-heading #source-status {
     display: none;
   }
 }
 @media (max-width: 760px) {
+  :root {
+    --page-gutter: 20px;
+  }
   .site-header {
     height: 68px;
-    padding: 0 22px;
   }
   .organization {
     font-size: 10px;
     letter-spacing: 1px;
   }
   main {
-    padding: 30px 20px 24px;
+    padding: 30px var(--page-gutter) 24px;
   }
   h1 {
     font-size: 28px;
@@ -681,7 +715,7 @@ progress::-moz-progress-bar {
   }
   th,
   td {
-    padding: 12px 18px;
+    padding: 12px var(--panel-gutter);
     min-width: 200px;
   }
   th:last-child,
@@ -694,9 +728,6 @@ progress::-moz-progress-bar {
   }
   .local-badge {
     font-size: 12px;
-  }
-  .table-footer {
-    padding: 12px 18px;
   }
   .folder-picker {
     padding: 25px 20px;
