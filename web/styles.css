@@ -69,29 +69,9 @@ summary:focus-visible,
   padding: 0 5%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   background: #fff;
   border-bottom: 1px solid var(--border);
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  text-decoration: none;
-  font-size: 19px;
-  font-weight: 650;
-  letter-spacing: -0.4px;
-}
-.brand-mark {
-  width: 35px;
-  height: 35px;
-  display: grid;
-  place-items: center;
-  background: var(--accent);
-  color: #fff;
-  font-size: 25px;
-  font-weight: 700;
-  border-radius: 6px;
 }
 .organization {
   font-size: 12px;
@@ -692,9 +672,6 @@ progress::-moz-progress-bar {
   }
   .folder-picker {
     padding: 25px 20px;
-  }
-  .brand {
-    font-size: 16px;
   }
   .preview-heading {
     gap: 10px;
