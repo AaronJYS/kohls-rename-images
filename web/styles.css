@@ -845,26 +845,18 @@ select:focus-visible {
   height: 17px;
   margin-top: 1px;
 }
-.pdf-rules-intro {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 8px;
-}
 .workbook-fields {
   margin: 20px 0 0;
-  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 .workbook-fields > div {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   gap: 16px;
-  padding: 6px 0;
+  padding: 17px 0;
+  border-bottom: 1px solid #eeedf0;
   font-size: 13px;
   line-height: 1.6;
-}
-.workbook-fields .field-group-start {
-  margin-top: 14px;
 }
 .workbook-fields dt {
   font-weight: 600;
