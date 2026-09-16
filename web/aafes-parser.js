@@ -20,17 +20,68 @@ export const COLUMNS = [
 const HEADERS = ["Line", "UPC", "SKU", "Description", "Qty", "UOM", "Price", "Amount"];
 const ROW_TOLERANCE = 2.5;
 const LINE_NUMBER = /^\d{4,6}$/;
-const NUMBER = /^-?[\d,]*\.?\d+$/;
+export const MAX_EXCEL_CELL_TEXT = 32767;
+const MAX_EXCEL_CELL_LINE_BREAKS = 253;
+
+export function exceedsExcelCellLimits(value) {
+  const text = String(value ?? "");
+  return text.length > MAX_EXCEL_CELL_TEXT || (text.match(/\n/g)?.length ?? 0) > MAX_EXCEL_CELL_LINE_BREAKS;
+}
+
+// Line extraction stays separate from the one-row-per-PO output. Keeping both
+// lists in source-line order preserves SKU/UPC pairing, including missing values.
+export function groupOrders(records) {
+  const groups = new Map(), warnings = [];
+  const orderFields = COLUMNS.filter(([key]) => key !== "sku" && key !== "upc");
+  for (const row of records) {
+    let order = groups.get(row.po);
+    if (!order) {
+      order = { ...row, line_items: [], line_count: 0, conflicting_fields: new Set() };
+      groups.set(row.po, order);
+    }
+    for (const [key, label] of orderFields) {
+      const value = row[key];
+      if (value === null || value === undefined || value === "") continue;
+      if (order[key] === null || order[key] === undefined || order[key] === "") order[key] = value;
+      else if (order[key] !== value) order.conflicting_fields.add(label);
+    }
+    order.line_items.push(row);
+    order.line_count++;
+  }
+  for (const order of groups.values()) {
+    for (const key of ["sku", "upc"]) {
+      order[key] = order.line_items.some((row) => row[key])
+        ? order.line_items.map((row) => row[key] || "").join("\n") : "";
+    }
+    if (order.conflicting_fields.size)
+      warnings.push(`PO ${order.po}: conflicting ${[...order.conflicting_fields].join(", ")} values across line items. The first nonblank value was kept in the order row.`);
+    delete order.conflicting_fields;
+    if ([order.sku, order.upc].some(exceedsExcelCellLimits))
+      warnings.push(`PO ${order.po}: the SKU/UPC lists exceed Excel's cell limit. Complete pairs will be included on an additional Order Items sheet.`);
+  }
+  return { orders: [...groups.values()], warnings };
+}
 
 export function localDate(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export function toNumber(text) {
-  const cleaned = String(text ?? "").replace(/[$,]/g, "").trim();
-  return NUMBER.test(cleaned) && Number.isFinite(Number(cleaned))
-    ? Number(cleaned)
-    : text;
+  let cleaned = String(text ?? "").trim();
+  const accounting = cleaned.startsWith("(") && cleaned.endsWith(")");
+  if (accounting) cleaned = cleaned.slice(1, -1).trim();
+  const match = /^([+-]?)\s*(?:[$€£]\s*)?([+-]?)\s*([\d.,]+)$/.exec(cleaned);
+  if (!match || (match[1] && match[2]) || (accounting && (match[1] || match[2]))) return text;
+  let number = match[3];
+  if (/^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)(?:\.\d+)?$/.test(number) || /^\.\d+$/.test(number)) {
+    // AAFES thousands grouping (1,234) and dot decimals, including unit prices.
+    number = number.replaceAll(",", "");
+  } else if (/^(?:\d+|[1-9]\d{0,2}(?:\.\d{3})+),\d+$/.test(number) || /^,\d+$/.test(number)) {
+    // Comma decimals (12,50) and dot-grouped thousands (1.234,50).
+    number = number.replaceAll(".", "").replace(",", ".");
+  } else return text;
+  const value = Number(number) * (accounting || (match[1] || match[2]) === "-" ? -1 : 1);
+  return Number.isFinite(value) ? value : text;
 }
 
 // ISO strings avoid timezone shifts between parsing, preview, and Excel export.
@@ -86,17 +137,22 @@ function vendorNumber(words) {
 }
 
 function printedOrderTotal(words, bounds) {
-  if (!bounds) return null;
+  if (!bounds) return { value: null, extraValues: false };
   const heading = words.find((word) => word.text === "Package" &&
     sameBand(words, word).some((other) => other.text === "Description" && other.x0 > word.x1));
-  if (!heading) return null;
+  if (!heading) return { value: null, extraValues: false };
   const amountColumn = bounds.find((column) => column.name === "Amount");
-  const candidates = words.filter((word) => word.top > heading.top + ROW_TOLERANCE &&
-    (word.x0 + word.x1) / 2 >= amountColumn.low && Number.isFinite(toNumber(word.text)) &&
-    sameBand(words, word).every((other) => other === word || other.text === "$"));
-  // The final numeric cell below the notes is the printed document total.
-  // Footer dates/page counts are excluded by the single-cell row requirement.
-  return candidates.length ? toNumber(candidates.at(-1).text) : null;
+  const candidates = [];
+  for (const word of words) {
+    if (word.top <= heading.top + ROW_TOLERANCE || (word.x0 + word.x1) / 2 < amountColumn.low ||
+        candidates.some((candidate) => Math.abs(candidate.top - word.top) <= ROW_TOLERANCE)) continue;
+    const value = toNumber(sameBand(words, word).map((item) => item.text).join(" "));
+    if (Number.isFinite(value)) candidates.push({ top: word.top, value });
+  }
+  // The first standalone amount closes the Package Description/notes block.
+  // Later standalone numbers belong below that total and must not replace it,
+  // even if one happens to match the line sum. Surface that ambiguity for review.
+  return { value: candidates[0]?.value ?? null, extraValues: candidates.length > 1 };
 }
 
 function labelledDate(words, second) {
@@ -210,10 +266,12 @@ export function createExtractor({ processedDate = localDate() } = {}) {
         if (!bounds) { warn(pageNumber, "The table columns could not be recognized. This page was skipped."); return; }
       }
       const printedTotal = printedOrderTotal(words, bounds);
-      if (order && printedTotal !== null) {
-        if (order.printed_total !== undefined && order.printed_total !== printedTotal)
+      if (order && printedTotal.value !== null) {
+        if (printedTotal.extraValues)
+          warn(pageNumber, `PO ${currentPO}: extra numeric values below the printed total were ignored. Amount uses the first standalone total after Package Description; check the source PDF.`);
+        if (order.printed_total !== undefined && order.printed_total !== printedTotal.value)
           warn(pageNumber, `PO ${currentPO} has conflicting printed totals. The first total was kept.`);
-        else order.printed_total = printedTotal;
+        else order.printed_total = printedTotal.value;
       }
       if (!bounds) {
         warn(pageNumber, "No AAFES line-item table was recognized. Check this page in the source PDF.");
@@ -222,9 +280,8 @@ export function createExtractor({ processedDate = localDate() } = {}) {
       const rows = groupRows(words, bounds, band ? band[0].top : 0);
       for (const [index, cells] of rows.entries()) {
         if (!LINE_NUMBER.test(cells.Line ?? "")) continue;
-        if (!NUMBER.test((cells.Qty ?? "").replace(/,/g, "")) ||
-            !NUMBER.test((cells.Amount ?? "").replace(/,/g, "")) ||
-            !Number.isFinite(toNumber(cells.Qty)) || !Number.isFinite(toNumber(cells.Amount))) {
+        const qty = toNumber(cells.Qty), amount = toNumber(cells.Amount);
+        if (!Number.isFinite(qty) || !Number.isFinite(amount)) {
           warn(pageNumber, `Line ${cells.Line} has an unreadable quantity or amount and was skipped.`);
           continue;
         }
@@ -232,8 +289,8 @@ export function createExtractor({ processedDate = localDate() } = {}) {
         const row = {
           po: currentPO, line_no: cells.Line, upc: cells.UPC ?? "", sku: cells.SKU ?? "",
           vendor_style: vendorStyle(rows, index), description: cells.Description ?? "",
-          qty: toNumber(cells.Qty), uom: cells.UOM ?? "", price: toNumber(cells.Price ?? ""),
-          amount: toNumber(cells.Amount), requested_ship: ship, requested_del: delivery,
+          qty, uom: cells.UOM ?? "", price: toNumber(cells.Price ?? ""),
+          amount, requested_ship: ship, requested_del: delivery,
           store, source_page: pageNumber,
         };
         const key = `${currentPO}:${row.line_no}`;
@@ -284,13 +341,14 @@ export function createExtractor({ processedDate = localDate() } = {}) {
           ["date_ack", "Date Ack"], ["requested_ship", "Requested Ship"],
         ];
         const missing = required.filter(([key]) => lines.some((row) => !row[key])).map(([, label]) => label);
-        if (missing.length) warnings.push(`PO ${po}: missing ${missing.join(", ")}. These fields are left blank; check the source PDF.`);
+        if (missing.length) warnings.push(`PO ${po}: missing ${missing.join(", ")} on one or more source lines. Check the source PDF.`);
       }
       if (emptyPages) warnings.push(`${emptyPages} page(s) had no readable text. Check for scanned pages or blank separators.`);
       if (duplicateCount) warnings.push(`${duplicateCount} repeated PO line(s) were omitted. Each PO and line number is included once.`);
       const missing = records.filter((row) => !row.sku || !row.upc);
       if (missing.length) warnings.push(`${missing.length} line item(s) have a missing SKU or UPC. User Defined Fields #1 and #2 are left blank where missing; check the source PDF.`);
-      return { records, warnings, orderCount: new Set(records.map((row) => row.po)).size };
+      const grouped = groupOrders(records);
+      return { records, orders: grouped.orders, warnings: [...warnings, ...grouped.warnings], orderCount: grouped.orders.length };
     },
   };
 }

@@ -39,7 +39,7 @@ function renderFiles() {
     const status = document.createElement("span");
     status.className = `pdf-file-status${file.error ? " file-error" : ""}`;
     status.textContent = file.error || (file.result
-      ? `${file.result.records.length} line items · ${file.result.pageCount} pages${file.result.warnings.length ? " · Review notes" : " · Ready"}`
+      ? `${file.result.orderCount} purchase orders · ${file.result.pageCount} pages${file.result.warnings.length ? " · Review notes" : " · Ready"}`
       : file.status);
     info.append(name, status);
     const remove = document.createElement("button");
@@ -72,7 +72,7 @@ function formatValue(key, type, value) {
 function renderTable() {
   const file = currentFile();
   if (!file) return;
-  const records = file.result.records;
+  const records = file.result.orders;
   const pageCount = Math.ceil(records.length / PAGE_SIZE);
   page = Math.max(0, Math.min(page, pageCount - 1));
   const first = page * PAGE_SIZE;
@@ -81,12 +81,27 @@ function renderTable() {
     for (const [key, , type] of COLUMNS) {
       const td = document.createElement("td");
       td.textContent = formatValue(key, type, record[key]);
+      if ((key === "sku" || key === "upc") && record.line_count > 1 && record[key]) {
+        const details = document.createElement("details");
+        details.className = "pdf-identifier-list";
+        const summary = document.createElement("summary");
+        summary.textContent = `${record.line_count} ${key === "sku" ? "SKUs" : "UPCs"}`;
+        const values = document.createElement("div");
+        values.className = "pdf-identifier-values";
+        // Materialize long lists only when requested, keeping the preview small.
+        details.addEventListener("toggle", () => {
+          if (details.open && !values.textContent)
+            values.textContent = record.line_items.map((row) => row[key] || "—").join("\n");
+        });
+        details.append(summary, values);
+        td.replaceChildren(details);
+      }
       if (type === "money" || type === "number") td.className = "numeric";
       tr.append(td);
     }
     return tr;
   }));
-  $("pdf-page-label").textContent = `${first + 1}–${Math.min(first + PAGE_SIZE, records.length)} of ${records.length} line items`;
+  $("pdf-page-label").textContent = `${first + 1}–${Math.min(first + PAGE_SIZE, records.length)} of ${records.length} purchase orders`;
   $("pdf-previous-page").disabled = page === 0;
   $("pdf-next-page").disabled = page === pageCount - 1;
   $("pdf-pagination").hidden = pageCount < 2;
@@ -108,7 +123,7 @@ function render() {
   if (!currentFile()) return;
   $("pdf-preview-file").value = String(selectedId);
   const { records, orderCount, pageCount, warnings } = currentFile().result;
-  $("pdf-stats").replaceChildren(...[[records.length, "line items"], [orderCount, "purchase orders"], [pageCount, "PDF pages"]].map(([value, label]) => {
+  $("pdf-stats").replaceChildren(...[[orderCount, "purchase orders"], [records.length, "source line items"], [pageCount, "PDF pages"]].map(([value, label]) => {
     const stat = document.createElement("div");
     stat.className = "stat";
     const strong = document.createElement("strong");
@@ -124,9 +139,6 @@ function render() {
     return li;
   }));
   $("pdf-action-title").textContent = warnings.length ? "Review the notes before downloading." : "Your workbook is ready.";
-  $("pdf-action-description").textContent = ready.length > 1
-    ? "Download this workbook, or get all ready workbooks in one ZIP."
-    : "Download an Excel file with all the extracted line items.";
   renderTable();
 }
 
@@ -181,12 +193,10 @@ async function addFiles(incoming) {
   busy = false;
   $("pdf-progress-area").hidden = true;
   const failed = added.filter((entry) => entry.error).length;
-  const succeeded = added.length - failed;
   const notes = [...errors];
   if (stopped) notes.push(readyFiles().length ? "Extraction stopped. Completed PDFs are still available below." : "Extraction stopped.");
   else if (failed) notes.push(`${failed} PDF(s) could not be converted. See the message beside each file.`);
   if (duplicates) notes.push(`${duplicates} already-selected PDF(s) were skipped.`);
-  if (succeeded) notes.push(`${succeeded} ${succeeded === 1 ? "workbook" : "workbooks"} ready. Review the extracted rows below.`);
   message(notes.join(" "), failed || errors.length || stopped ? "warning" : "");
   render();
 }
@@ -220,17 +230,24 @@ async function download(all) {
   if (busy || exporting || !currentFile()) return;
   exporting = true;
   render();
-  message("Preparing your download…");
+  message("");
+  $("pdf-action-title").textContent = "Preparing your download…";
+  let successMessage = "";
   try {
     const { createWorkbook, createWorkbookArchive, downloadFile } = await import("./excel-export.js");
     const file = currentFile();
     const data = all
-      ? await createWorkbookArchive(readyFiles().map((entry) => ({ name: entry.file.name, records: entry.result.records })))
-      : await createWorkbook(file.result.records);
-    downloadFile(data, all ? "AAFES_purchase_orders.zip" : outputName(file.file.name));
-    message("Download started. Find your file in your browser’s downloads.");
+      ? await createWorkbookArchive(readyFiles().map((entry) => ({ name: entry.file.name, records: entry.result.orders })))
+      : await createWorkbook(file.result.orders);
+    const name = all ? "AAFES_purchase_orders.zip" : outputName(file.file.name);
+    const count = all ? readyFiles().length : 1;
+    downloadFile(data, name);
+    successMessage = `Created ${name}. ${count} ${count === 1 ? "workbook" : "workbooks"} exported`;
   } catch (error) { message(`The download could not be prepared. ${error.message}`, "error"); }
   finally { exporting = false; render(); }
+  if (successMessage) {
+    $("pdf-action-title").textContent = successMessage;
+  }
 }
 $("download-excel").addEventListener("click", () => { void download(false); });
 $("download-pdf-zip").addEventListener("click", () => { void download(true); });

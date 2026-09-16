@@ -76,7 +76,11 @@ export async function readPurchaseOrders(file, { signal, onProgress = () => {}, 
     for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
       signal?.throwIfAborted();
       const page = await document.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 1 });
+      // /Rotate changes viewing orientation, not the order's text coordinates.
+      // Normalize page width to the parser's 612-point reference so uniformly
+      // scaled PDFs keep the same header distances and row tolerances.
+      const unrotated = page.getViewport({ scale: 1, rotation: 0 });
+      const viewport = page.getViewport({ scale: 612 / unrotated.width, rotation: 0 });
       const content = await page.getTextContent();
       const words = textItemsToWords(content, viewport, pdfjs.Util, measure);
       extractor.addPage({ words, width: viewport.width, pageNumber });

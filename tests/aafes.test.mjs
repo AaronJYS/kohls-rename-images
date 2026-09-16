@@ -2,12 +2,52 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import { COLUMNS, extractPages, toDate, toNumber, localDate, addOrderTotals } from "../web/aafes-parser.js";
+import { COLUMNS, extractPages, groupOrders, toDate, toNumber, localDate, addOrderTotals } from "../web/aafes-parser.js";
 import { textItemsToWords, validatePDF, MAX_PDF_BYTES } from "../web/pdf-reader.js";
 import { createWorkbook, createWorkbookArchive, excelDate, outputName } from "../web/excel-export.js";
 
 const fixtures = JSON.parse(await readFile(new URL("./fixtures/aafes-words.json", import.meta.url), "utf8"));
 const copy = () => structuredClone(fixtures);
+
+test("purchase orders collapse to one row with paired identifier lists and one total", () => {
+  const { records, orders, orderCount } = extractPages(fixtures);
+  assert.equal(records.length, 4);
+  assert.equal(orderCount, 2);
+  assert.equal(orders.length, 2);
+  assert.deepEqual(orders.map((row) => [row.po, row.order_total, row.line_count]), [
+    ["0069749254", 1320.81, 3], ["0069749253", -17.25, 1],
+  ]);
+  assert.equal(orders[0].sku, "003278934\n000765432\n009999999");
+  assert.equal(orders[0].upc, "000123456789\n000123456789\n000123456789");
+  assert.deepEqual(orders[0].line_items.map((row) => row.source_page), [1, 1, 2]);
+  assert.equal(records[0].sku, "003278934"); // Grouping never mutates raw extraction.
+});
+
+test("grouping retains source order and blank identifier slots without summing repeated totals", () => {
+  const lines = [
+    { po: "0000000001", sku: "", upc: "00001", order_total: 0, store: "", requested_ship: null },
+    { po: "0000000002", sku: "00002", upc: "00002", order_total: 15 },
+    { po: "0000000001", sku: "00003", upc: "", order_total: 0, store: "001", requested_ship: "2026-09-28" },
+  ];
+  const { orders, warnings } = groupOrders(lines);
+  assert.equal(warnings.length, 0);
+  assert.deepEqual(orders.map((row) => row.po), ["0000000001", "0000000002"]);
+  assert.equal(orders[0].sku, "\n00003");
+  assert.equal(orders[0].upc, "00001\n");
+  assert.equal(orders[0].order_total, 0);
+  assert.equal(orders[0].store, "001");
+  assert.equal(orders[0].requested_ship, "2026-09-28");
+});
+
+test("conflicting order-level fields are reported while the first nonblank value is retained", () => {
+  const { orders, warnings } = groupOrders([
+    { po: "0000000001", sku: "001", upc: "01", store: "001", requested_ship: "2026-09-28" },
+    { po: "0000000001", sku: "002", upc: "02", store: "002", requested_ship: "2026-09-29" },
+  ]);
+  assert.equal(orders[0].store, "001");
+  assert.equal(orders[0].requested_ship, "2026-09-28");
+  assert.match(warnings.join(" "), /conflicting Store Num, User Defined Field #3/);
+});
 
 test("all extracted fields match the original Python converter's result for the synthetic PDF", async () => {
   const expected = JSON.parse(await readFile(new URL("./fixtures/aafes-expected.json", import.meta.url), "utf8"));
@@ -153,7 +193,7 @@ test("PDF text items split into positioned words using measured widths", () => {
 });
 
 test("exported XLSX is a valid ZIP with typed identifiers, numbers, dates, filters, and frozen header", async () => {
-  const records = extractPages(fixtures, { processedDate: "2026-09-15" }).records;
+  const records = extractPages(fixtures, { processedDate: "2026-09-15" }).orders;
   records[0].alt_document = '=HYPERLINK("https://example.com") & <style>';
   const bytes = await createWorkbook(records);
   // Independent check using Python's standard ZIP/XML readers, not the writer.
@@ -173,8 +213,9 @@ assert cells['C2'].find('.//s:t',ns).text=='0069749254'
 assert cells['D2'].find('.//s:t',ns).text.startswith('=HYPERLINK')
 assert cells['E2'].find('.//s:t',ns).text=='000123'
 assert len(cells['F2'])==0
-assert cells['L2'].find('.//s:t',ns).text=='003278934'
-assert cells['M2'].find('.//s:t',ns).text=='000123456789'
+assert cells['L2'].find('.//s:t',ns).text.splitlines()==['003278934','000765432','009999999']
+assert cells['M2'].find('.//s:t',ns).text.splitlines()==['000123456789']*3
+assert cells['C3'].find('.//s:t',ns).text=='0069749253'
 assert s.find('.//s:f',ns) is None
 assert float(cells['G2'].find('s:v',ns).text)==1320.81
 assert int(cells['H2'].find('s:v',ns).text)==46280
@@ -188,23 +229,62 @@ xfs=styles.findall('s:cellXfs/s:xf',ns)
 assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='mm/dd/yyyy'
 assert formats[xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']]=='mm/dd/yyyy'
 assert formats[xfs[int(cells['N2'].attrib['s'])].attrib['numFmtId']]=='m/d/yyyy'
-assert s.find('s:autoFilter',ns).attrib['ref']=='A1:N5'
+assert xfs[int(cells['L2'].attrib['s'])].find('s:alignment',ns).attrib['wrapText']=='1'
+assert s.find('s:autoFilter',ns).attrib['ref']=='A1:N3'
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'
 print(json.dumps({'rows':len(s.findall('.//s:row',ns)),'columns':len(s.findall('.//s:row',ns)[0])}))
 `], { input: bytes, maxBuffer: 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr.toString());
-  assert.deepEqual(JSON.parse(result.stdout), { rows: 5, columns: COLUMNS.length });
+  assert.deepEqual(JSON.parse(result.stdout), { rows: 3, columns: COLUMNS.length });
+});
+
+test("identifier lists exceeding one Excel cell use a complete paired Order Items sheet", async () => {
+  const lines = Array.from({ length: 3 }, (_, i) => ({
+    po: "0000000001", line_no: `0000${i + 1}`, sku: String(i).repeat(12000), upc: `00000000${i}`, order_total: 75,
+  }));
+  const { orders, warnings } = groupOrders(lines);
+  assert.match(warnings.join(" "), /additional Order Items sheet/);
+  const bytes = await createWorkbook(orders);
+  const zip = await globalThis.JSZip.loadAsync(bytes);
+  const main = await zip.file("xl/worksheets/sheet1.xml").async("string");
+  const detail = await zip.file("xl/worksheets/sheet2.xml").async("string");
+  const book = await zip.file("xl/workbook.xml").async("string");
+  assert.match(main, /dimension ref="A1:N2"/);
+  assert.match(main, /3 values \(see Order Items\)/);
+  assert.match(detail, /dimension ref="A1:D4"/);
+  assert.match(book, /sheet name="Order Items"/);
+  for (const row of lines) {
+    assert.ok(detail.includes(row.sku));
+    assert.ok(detail.includes(row.upc));
+    assert.ok(detail.includes(row.line_no));
+  }
+});
+
+test("short identifier lists respect Excel's 253-line-break cell limit", async () => {
+  const lines = Array.from({ length: 255 }, (_, i) => ({
+    po: "0000000001", line_no: String(i + 1).padStart(6, "0"), sku: String(i), upc: `000${i}`, order_total: 255,
+  }));
+  const atLimit = groupOrders(lines.slice(0, 254));
+  assert.equal(atLimit.warnings.length, 0);
+  const normal = await globalThis.JSZip.loadAsync(await createWorkbook(atLimit.orders));
+  assert.equal(normal.file("xl/worksheets/sheet2.xml"), null);
+  const aboveLimit = groupOrders(lines);
+  assert.match(aboveLimit.warnings.join(" "), /additional Order Items sheet/);
+  const overflow = await globalThis.JSZip.loadAsync(await createWorkbook(aboveLimit.orders));
+  assert.match(await overflow.file("xl/worksheets/sheet1.xml").async("string"), /255 values \(see Order Items\)/);
+  assert.match(await overflow.file("xl/worksheets/sheet2.xml").async("string"), /dimension ref="A1:D256"/);
 });
 
 test("batch ZIP disambiguates duplicate filenames and preserves separate workbooks", async () => {
-  const records = extractPages(fixtures).records;
+  const records = extractPages(fixtures).orders;
   const bytes = await createWorkbookArchive([{ name: "orders.pdf", records }, { name: "ORDERS.PDF", records }]);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   assert.deepEqual(Object.keys(zip.files), ["orders_extracted.xlsx", "ORDERS_extracted_2.xlsx"]);
   for (const item of Object.values(zip.files)) {
     const workbook = await globalThis.JSZip.loadAsync(await item.async("uint8array"));
     assert.ok(workbook.file("xl/worksheets/sheet1.xml"));
+    assert.match(await workbook.file("xl/worksheets/sheet1.xml").async("string"), /dimension ref="A1:N3"/);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");
-  await assert.rejects(createWorkbook([]), /no extracted line items/);
+  await assert.rejects(createWorkbook([]), /no extracted purchase orders/);
 });

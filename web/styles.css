@@ -895,8 +895,8 @@ select:focus-visible {
 }
 .pdf-file-list {
   list-style: none;
-  padding: 0;
-  margin: 0 0 10px;
+  padding: 0 8px;
+  margin: 0 -8px 10px;
   max-height: 264px;
   overflow-y: auto;
 }
@@ -958,6 +958,22 @@ select:focus-visible {
 }
 .pdf-table .numeric {
   text-align: right;
+}
+.pdf-table td {
+  vertical-align: top;
+}
+.pdf-identifier-list summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 13px;
+}
+.pdf-identifier-values {
+  margin-top: 9px;
+  max-height: 220px;
+  max-width: 260px;
+  overflow: auto;
+  white-space: pre;
+  line-height: 1.65;
 }
 .download-actions {
   display: flex;

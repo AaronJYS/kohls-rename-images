@@ -39,6 +39,7 @@ function refreshAction() {
     blocked ||
     (!plan.files.length && !plan.directories.length);
   if (completed || copying) return;
+  $("action-description").hidden = false;
   $("action-title").textContent = blocked
     ? "Resolve the unrecognized colors first."
     : plan && !plan.files.length && !plan.directories.length
@@ -337,12 +338,10 @@ $("create-folder").addEventListener("click", async () => {
     $("progress-file").textContent = `Log saved as ${result.logName}`;
     $("output-path").textContent = `${source.name} / ${result.outputName}`;
     $("source-status").textContent = "Complete";
-    $("action-title").textContent = "Your renamed folder is ready.";
-    $("action-description").textContent =
-      `Open ${result.outputName} inside ${source.name} in File Explorer or Finder.`;
-    message(
-      `Created ${source.name}/${result.outputName}. ${result.completedFiles} files copied; original files preserved.`,
-    );
+    $("action-title").textContent =
+      `Created ${source.name}/${result.outputName}. ${result.completedFiles} files copied`;
+    $("action-description").textContent = "";
+    $("action-description").hidden = true;
   } catch (error) {
     const stopped = error.name === "AbortError";
     const partial = error.outputName
