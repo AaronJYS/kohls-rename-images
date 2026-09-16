@@ -239,7 +239,7 @@ async function download(all) {
   exporting = true;
   render();
   message("");
-  $("pdf-action-title").textContent = "Preparing your download…";
+  $("pdf-action-title").textContent = "Preparing...";
   let successMessage = "";
   try {
     const { createWorkbook, createWorkbookArchive, downloadFile } = await import("./excel-export.js");

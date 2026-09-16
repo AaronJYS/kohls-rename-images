@@ -54,6 +54,8 @@ per Document Num and these columns:
 | User Defined Field #3 | Requested Ship in the delivery schedule | Date (`m/d/yyyy`) |
 
 The header is frozen, filters are enabled, and column widths fit the data.
+Cells use plain Excel styling with visible gridlines, no colored fills or custom
+borders, and regular headers. Date and number formats are preserved.
 Identifiers preserve leading zeros. SKU and UPC entries remain paired, including
 repeated values and blank positions for missing identifiers. The preview shows
 expandable lists within each order row. If either list exceeds Excel's cell

@@ -219,36 +219,24 @@
             </button>
           </div>
         </div>
-        <div id="progress-area" class="progress-area" hidden>
-          <div>
-            <span id="progress-label">Preparing your copy…</span
-            ><button id="cancel-copy" class="text-button" type="button">
-              Stop
-            </button>
-          </div>
-          <progress
-            id="progress"
-            max="100"
-            value="0"
-            aria-label="Copy progress"
-          ></progress>
-          <p id="progress-file" class="muted small"></p>
-        </div>
         <div class="action-bar">
           <div>
             <h3 id="action-title">Ready.</h3>
             <p id="action-description" hidden></p>
           </div>
-          <button
-            id="create-folder"
-            class="button primary"
-            type="button"
-            disabled
-          >
-            Create renamed folder<svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14m-5-5 5 5-5 5" />
-            </svg>
-          </button>
+          <div class="download-actions">
+            <button id="cancel-copy" class="text-button" type="button" hidden>Stop</button>
+            <button
+              id="create-folder"
+              class="button primary"
+              type="button"
+              disabled
+            >
+              Create renamed folder<svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14m-5-5 5 5-5 5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </section>
       </div>

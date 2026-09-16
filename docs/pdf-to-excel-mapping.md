@@ -73,6 +73,8 @@ of assuming the example's values or copying a rectangular text block.
 The workbook uses text cells for identifiers, numeric cells for money and
 constants, and real Excel date cells. Headers are frozen, filters span A:N,
 and column widths are fitted to the data. SKU/UPC cells wrap at line breaks.
+Cells use plain Excel styling with visible gridlines, no colored fills or custom
+borders, and regular headers. Date and number formats are preserved.
 If either list exceeds [Excel's cell limits](https://support.microsoft.com/en-us/excel/excel-specifications-and-limits)
 of 32,767 characters or 253 line breaks, both cells refer to
 an additional **Order Items** sheet. That sheet preserves the complete paired

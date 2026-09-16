@@ -50,12 +50,6 @@ function refreshAction() {
     : "";
 }
 
-function bytes(value) {
-  if (value < 1024) return `${value} B`;
-  const unit = Math.min(Math.floor(Math.log(value) / Math.log(1024)), 4);
-  return `${(value / 1024 ** unit).toFixed(unit === 1 ? 0 : 1)} ${["B", "KB", "MB", "GB", "TB"][unit]}`;
-}
-
 function renderTable() {
   const totalPages = Math.max(1, Math.ceil(plan.files.length / PAGE_SIZE));
   page = Math.max(0, Math.min(page, totalPages - 1));
@@ -95,7 +89,6 @@ function renderTable() {
 function renderPlan() {
   plan = buildPlan(snapshot.entries, { colors });
   completed = false;
-  $("progress-area").hidden = true;
   $("preview").hidden = false;
   const stats = [
     [plan.matched, "images matched"],
@@ -152,7 +145,6 @@ $("select-folder").addEventListener("click", async () => {
     page = 0;
     message("");
     $("preview").hidden = true;
-    $("progress-area").hidden = true;
     $("folder-title").textContent = handle.name;
     $("folder-description").textContent = "Reading the folder…";
     $("source-status").textContent = "Scanning";
@@ -166,7 +158,7 @@ $("select-folder").addEventListener("click", async () => {
       `${handle.name} / ${await nextOutputName(handle)}`;
     renderPlan();
     $("folder-description").textContent =
-      `${plan.files.length} files found. Review the names below.`;
+      `${plan.files.length} ${plan.files.length === 1 ? "file" : "files"}.`;
     $("source-status").textContent = "";
     $("select-folder").querySelector("span").textContent = "Change folder";
     requestAnimationFrame(() => {
@@ -256,40 +248,17 @@ $("create-folder").addEventListener("click", async () => {
   setBusy(true);
   message("");
   abortController = new AbortController();
-  $("progress-area").hidden = false;
-  $("progress").value = 0;
+  $("cancel-copy").hidden = false;
   $("cancel-copy").disabled = false;
-  $("progress-label").textContent = "Preparing your copy…";
-  $("progress-file").textContent = "";
-  $("action-title").textContent = "Creating your renamed folder…";
-  $("action-description").hidden = false;
-  $("action-description").textContent =
-    "Keep this tab open until the copy is complete.";
-  $("source-status").textContent = "Copying";
-  let lastUpdate = 0;
+  $("action-title").textContent = "Preparing...";
+  $("action-description").hidden = true;
+  $("source-status").textContent = "";
   try {
     if ((await permission) !== "granted")
       throw new DOMException("Write permission was denied.", "NotAllowedError");
     const run = () =>
       exportPlan(source, plan, {
         signal: abortController.signal,
-        onProgress: (progress) => {
-          if (
-            performance.now() - lastUpdate < 100 &&
-            progress.completedFiles !== progress.totalFiles
-          )
-            return;
-          lastUpdate = performance.now();
-          $("progress").value = progress.totalBytes
-            ? Math.min(99, (progress.copiedBytes / progress.totalBytes) * 100)
-            : (progress.completedFiles / Math.max(1, progress.totalFiles)) *
-              100;
-          $("progress-label").textContent =
-            `${progress.completedFiles} of ${progress.totalFiles} files copied · ${bytes(progress.copiedBytes)}`;
-          $("progress-file").textContent = progress.path;
-          $("output-path").textContent =
-            `${source.name} / ${progress.outputName}`;
-        },
       });
     const result = navigator.locks
       ? await navigator.locks.request(
@@ -305,12 +274,8 @@ $("create-folder").addEventListener("click", async () => {
         )
       : await run();
     completed = true;
-    $("progress").value = 100;
-    $("progress-label").textContent =
-      `${result.completedFiles} files copied successfully`;
-    $("progress-file").textContent = `Log saved as ${result.logName}`;
     $("output-path").textContent = `${source.name} / ${result.outputName}`;
-    $("source-status").textContent = "Complete";
+    $("source-status").textContent = "";
     $("action-title").textContent = "Check original folder.";
     $("action-description").textContent = "";
     $("action-description").hidden = true;
@@ -323,11 +288,9 @@ $("create-folder").addEventListener("click", async () => {
       (stopped ? "Copy stopped." : explainError(error)) + partial,
       stopped ? "warning" : "error",
     );
-    $("progress-label").textContent = stopped
-      ? "Copy stopped"
-      : "Copy did not finish";
     $("source-status").textContent = "Needs attention";
   } finally {
+    $("cancel-copy").hidden = true;
     $("cancel-copy").disabled = true;
     copying = false;
     abortController = null;
