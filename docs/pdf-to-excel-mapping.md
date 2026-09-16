@@ -13,7 +13,10 @@ PDF produces its own workbook with a **Purchase Orders** sheet.
 | SKU | First number under `SKU #` on the item's line. Preserve it as text, including leading zeros. |
 | Qty | First quantity on the item's line under the PDF's `Qty` column. Additional values farther down the detail block are not added or substituted. |
 | Unit Price | Numeric value under `Price` on the same item line. |
-| Total Price | `Unit Price × Qty`, rounded to two decimal places. This is the item total, independent of the PDF's printed line amount or full PO total. |
+| Total Qty for same PO | Sum of `Qty` for every unique item with the same PO in this PDF. |
+| Total Price for same PO | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with the same PO in this PDF. |
+| Total Qty for same SKU | Sum of `Qty` for every unique item with the same SKU across all POs in this PDF. |
+| Total Price for same SKU | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with the same SKU across all POs in this PDF. |
 | Requested Ship Date | Date under `Requested Ship`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 | Requested Delivery Date | Date under `Requested Delivery`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 
@@ -43,9 +46,14 @@ conversion failures directly and does not display a separate issues panel.
    next item. Read the code immediately below the label, or beside it if inline.
    Do not substitute the SKU, UPC, or header's `Vendor #`. Missing styles remain
    blank with a review warning.
-6. Calculate Total Price from quantity and unit price. Omit repeated PO/line
+6. Calculate each item's price from quantity and unit price. Omit repeated PO/line
    pairs, keeping the first copy and warning on conflicting data, including
-   unit prices and requested dates.
+   unit prices and requested dates. Then sum quantities and calculated item
+   prices independently by PO and by SKU. Decimal addition preserves fractional
+   quantities and cents. Each group's totals repeat on every matching item row.
+   SKU groups span POs within the PDF; files in a batch are never combined.
+   Missing SKUs have blank SKU totals, and identifiers with different leading
+   zeros remain distinct. Negative and zero quantities contribute normally.
 7. Keep printed amounts and PO totals for diagnostic reconciliation. A mismatch
    between a printed PO total and the extracted amount sum produces a warning,
    without replacing exported item totals. The first standalone amount after
@@ -57,13 +65,14 @@ conversion failures directly and does not display a separate issues panel.
 
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
-two decimal places. The header is frozen, filters span **A:H**, and column widths
+two decimal places. The header is frozen, filters span **A:K**, and column widths
 fit the data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the
 preview.
 
-Multiple items with the same PO or style remain separate rows. There are no
+Multiple items with the same PO or style remain separate rows. Group totals are
+repeated values, not additive columns to sum again down the sheet. There are no
 aggregated SKU/UPC cells or additional identifier sheets. The extraction and
 export limits remain 100,000 source lines per PDF.
 
@@ -73,11 +82,12 @@ The coordinate-based extraction foundation is ported from
 [AAfes_Pdf_to_Excel](https://github.com/JYS-Enterprise-Inc/AAfes_Pdf_to_Excel)
 at commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. Internal source fields remain
 available for extraction parity and reconciliation; the preview and export use
-the eight fields above.
+the eleven fields above.
 
 Synthetic fixtures verify extraction parity, multiple POs, continuation pages,
 duplicate lines, leading zeros, item-specific styles and quantities, calculated
-totals, missing fields, requested dates, and independent XLSX ZIP/XML validation.
+totals, PO/SKU grouping, varied unit prices, decimal quantities, per-file totals,
+missing fields, requested dates, and independent XLSX ZIP/XML validation.
 Stress regressions cover numeric footers, accounting negatives, currency
 symbols, comma decimals, and malformed numeric values. Batch checks verify
 separate workbooks and duplicate filename handling.

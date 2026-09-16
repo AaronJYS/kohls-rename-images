@@ -6,7 +6,10 @@ export const COLUMNS = [
   ["sku", "SKU", "text"],
   ["qty", "Qty", "number"],
   ["price", "Unit Price", "money"],
-  ["total_price", "Total Price", "money"],
+  ["po_total_qty", "Total Qty for same PO", "number"],
+  ["po_total_price", "Total Price for same PO", "money"],
+  ["sku_total_qty", "Total Qty for same SKU", "number"],
+  ["sku_total_price", "Total Price for same SKU", "money"],
   ["requested_ship", "Requested Ship Date", "date"],
   ["requested_del", "Requested Delivery Date", "date"],
 ];
@@ -213,13 +216,23 @@ function vendorStyle(rows, index) {
   return "";
 }
 
+function decimal(value) {
+  const [digits, exponent = "0"] = String(value).split("e");
+  return [BigInt(digits.replace(".", "")), Number(exponent) - (digits.split(".")[1]?.length ?? 0)];
+}
+
+function sumDecimals([left, leftExponent], [right, rightExponent]) {
+  const exponent = Math.min(leftExponent, rightExponent);
+  return [left * 10n ** BigInt(leftExponent - exponent) + right * 10n ** BigInt(rightExponent - exponent), exponent];
+}
+
+function decimalValue([coefficient, exponent]) {
+  return Number(`${coefficient}e${exponent}`);
+}
+
 function lineTotal(qty, price) {
   // Multiply decimal coefficients before rounding to cents. Binary floating
   // point can otherwise turn 3 × 9.995 into 29.984999... and round a cent low.
-  const decimal = (value) => {
-    const [digits, exponent = "0"] = String(value).split("e");
-    return [BigInt(digits.replace(".", "")), Number(exponent) - (digits.split(".")[1]?.length ?? 0)];
-  };
   const [quantity, quantityExponent] = decimal(qty);
   const [unitPrice, priceExponent] = decimal(price);
   const product = quantity * unitPrice;
@@ -232,6 +245,34 @@ function lineTotal(qty, price) {
     cents = sign * ((product * sign + divisor / 2n) / divisor);
   }
   return Number(`${cents}e-2`);
+}
+
+// Called after duplicate PO/line pairs have been removed. Each map is local to
+// one PDF; SKU totals span all POs in that PDF and repeat on each matching item.
+export function addGroupedTotals(records) {
+  const groups = [["po", new Map()], ["sku", new Map()]];
+  for (const row of records) {
+    const qty = decimal(row.qty), price = decimal(row.total_price);
+    for (const [key, totals] of groups) {
+      if (!row[key]) continue;
+      const total = totals.get(row[key]) ?? { qty: [0n, 0], price: [0n, 0] };
+      total.qty = sumDecimals(total.qty, qty);
+      total.price = sumDecimals(total.price, price);
+      totals.set(row[key], total);
+    }
+  }
+  for (const [key, totals] of groups) {
+    for (const total of totals.values()) {
+      total.qty = decimalValue(total.qty);
+      total.price = decimalValue(total.price);
+    }
+    for (const row of records) {
+      const total = totals.get(row[key]);
+      // A missing SKU cannot identify a group of matching items.
+      row[`${key}_total_qty`] = total?.qty ?? null;
+      row[`${key}_total_price`] = total?.price ?? null;
+    }
+  }
 }
 
 export function addOrderTotals(records) {
@@ -325,6 +366,7 @@ export function createExtractor({ processedDate = localDate() } = {}) {
     finish() {
       if (!records.length) throw new Error("No purchase order line items were found. Choose a text-based AAFES Stand-alone Order PDF. Scans and photographs need OCR first.");
       addOrderTotals(records);
+      addGroupedTotals(records);
       const linesByOrder = new Map();
       for (const row of records) {
         if (!linesByOrder.has(row.po)) linesByOrder.set(row.po, []);
@@ -335,7 +377,7 @@ export function createExtractor({ processedDate = localDate() } = {}) {
         if (!lines?.length) continue;
         const calculated = lines[0].order_total;
         if (order.printed_total !== undefined && Math.abs(order.printed_total - calculated) > 0.005)
-          warnings.push(`PO ${po}: printed total ${order.printed_total.toFixed(2)} differs from the extracted line-item sum ${calculated.toFixed(2)}. Check for missing lines or adjustments. Total Price is calculated as Unit Price × Qty for each item.`);
+          warnings.push(`PO ${po}: printed total ${order.printed_total.toFixed(2)} differs from the extracted line-item sum ${calculated.toFixed(2)}. Check for missing lines or adjustments. Grouped price totals use Unit Price × Qty for each item.`);
         for (const row of lines) {
           Object.assign(row, {
             trading_partner: order.trading_partner || "",

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
-import { COLUMNS, extractPages, groupOrders, toDate, toNumber, localDate, addOrderTotals } from "../web/aafes-parser.js";
+import { COLUMNS, extractPages, groupOrders, toDate, toNumber, localDate, addOrderTotals, addGroupedTotals } from "../web/aafes-parser.js";
 import { textItemsToWords, validatePDF, MAX_PDF_BYTES } from "../web/pdf-reader.js";
 import { createWorkbook, createWorkbookArchive, excelDate, outputName } from "../web/excel-export.js";
 
@@ -58,18 +58,69 @@ test("all extracted fields match the original Python converter's result for the 
   assert.deepEqual(actual, expected);
 });
 
-test("the eight-column layout maps each item's style, SKU, quantity, prices, and requested dates", () => {
+test("the eleven-column layout replaces line Total Price with PO and SKU totals", () => {
   assert.deepEqual(COLUMNS.map(([, label]) => label), [
-    "PO", "Vendor's Style", "SKU", "Qty", "Unit Price", "Total Price", "Requested Ship Date", "Requested Delivery Date",
+    "PO", "Vendor's Style", "SKU", "Qty", "Unit Price", "Total Qty for same PO", "Total Price for same PO",
+    "Total Qty for same SKU", "Total Price for same SKU", "Requested Ship Date", "Requested Delivery Date",
   ]);
   const { records, warnings } = extractPages(fixtures);
   assert.deepEqual(records.map((row) => COLUMNS.map(([key]) => row[key])), [
-    ["0069749254", "BX06772.BK", "003278934", 2, 17.25, 34.5, "2026-09-01", "2026-09-09"],
-    ["0069749254", "22003.NV", "000765432", 3, 17.25, 51.75, "2026-09-01", "2026-09-09"],
-    ["0069749254", "70000.CG", "009999999", 1000, 17.25, 17250, "2026-09-01", "2026-09-09"],
-    ["0069749253", "RETURN.BK", "003278934", -1, 17.25, -17.25, "2026-09-01", "2026-09-09"],
+    ["0069749254", "BX06772.BK", "003278934", 2, 17.25, 1005, 17336.25, 1, 17.25, "2026-09-01", "2026-09-09"],
+    ["0069749254", "22003.NV", "000765432", 3, 17.25, 1005, 17336.25, 3, 51.75, "2026-09-01", "2026-09-09"],
+    ["0069749254", "70000.CG", "009999999", 1000, 17.25, 1005, 17336.25, 1000, 17250, "2026-09-01", "2026-09-09"],
+    ["0069749253", "RETURN.BK", "003278934", -1, 17.25, -1, -17.25, 1, 17.25, "2026-09-01", "2026-09-09"],
   ]);
   assert.equal(warnings.length, 1); // Only the intentional repeated line.
+});
+
+test("PO and SKU totals include each matching item at its own unit price", () => {
+  const pages = [copy()[0]];
+  pages[0].words.find((word) => word.text === "000765432").text = "003278934";
+  pages[0].words.find((word) => word.text === "17.25" && word.top > 250).text = "20.00";
+  const { records } = extractPages(pages);
+  assert.deepEqual(records.map((row) => row.total_price), [34.5, 60]);
+  for (const row of records) {
+    assert.equal(row.po_total_qty, 5);
+    assert.equal(row.po_total_price, 94.5);
+    assert.equal(row.sku_total_qty, 5);
+    assert.equal(row.sku_total_price, 94.5);
+  }
+});
+
+test("group totals keep fractional quantities exact and include zero and negative lines", () => {
+  const records = [
+    { po: "001", sku: "0001", qty: 0.1, total_price: 0.1 },
+    { po: "001", sku: "0001", qty: 0.2, total_price: 0.2 },
+    { po: "002", sku: "0001", qty: -0.1, total_price: -0.1 },
+    { po: "002", sku: "0001", qty: 0, total_price: 0 },
+  ];
+  addGroupedTotals(records);
+  assert.deepEqual(records.map((row) => [row.po_total_qty, row.po_total_price, row.sku_total_qty, row.sku_total_price]), [
+    [0.3, 0.3, 0.2, 0.2], [0.3, 0.3, 0.2, 0.2], [-0.1, -0.1, 0.2, 0.2], [-0.1, -0.1, 0.2, 0.2],
+  ]);
+});
+
+test("missing SKUs have blank SKU totals and leading-zero identifiers remain distinct", () => {
+  const records = [
+    { po: "001", sku: "0001", qty: 1, total_price: 10 },
+    { po: "001", sku: "1", qty: 2, total_price: 20 },
+    { po: "001", sku: "", qty: 3, total_price: 30 },
+    { po: "002", sku: "", qty: 4, total_price: 40 },
+  ];
+  addGroupedTotals(records);
+  assert.deepEqual(records.map((row) => [row.po_total_qty, row.po_total_price, row.sku_total_qty, row.sku_total_price]), [
+    [6, 60, 1, 10], [6, 60, 2, 20], [6, 60, null, null], [4, 40, null, null],
+  ]);
+});
+
+test("group totals are isolated to each PDF extraction", () => {
+  const first = extractPages([copy()[0]]).records;
+  const second = extractPages([copy()[3]]).records;
+  assert.equal(first[0].sku, second[0].sku);
+  assert.equal(first[0].sku_total_qty, 2);
+  assert.equal(first[0].sku_total_price, 34.5);
+  assert.equal(second[0].sku_total_qty, -1);
+  assert.equal(second[0].sku_total_price, -17.25);
 });
 
 test("printed totals remain diagnostic and never replace an item's calculated Total Price", () => {
@@ -79,6 +130,7 @@ test("printed totals remain diagnostic and never replace an item's calculated To
   assert.deepEqual(records.map((row) => row.order_total), [1300, 1300, 1300, -17.25]);
   assert.equal(records[0].amount, 34.5);
   assert.deepEqual(records.map((row) => row.total_price), [34.5, 51.75, 17250, -17.25]);
+  assert.deepEqual(records.map((row) => row.po_total_price), [17336.25, 17336.25, 17336.25, -17.25]);
   assert.match(warnings.join(" "), /printed total 1300.00 differs.*1320.81/);
 });
 
@@ -248,6 +300,7 @@ test("exported XLSX is a valid ZIP with typed identifiers, numbers, dates, filte
   records[3].vendor_style = '=HYPERLINK("https://example.com") & <style>';
   records[3].qty = -1.5;
   records[3].total_price = -25.88;
+  addGroupedTotals(records);
   const bytes = await createWorkbook(records);
   // Independent check using Python's standard ZIP/XML readers, not the writer.
   const result = spawnSync(process.env.PYTHON || "python3", ["-B", "-c", `
@@ -259,7 +312,7 @@ for name in z.namelist():
 ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 s=E.fromstring(z.read('xl/worksheets/sheet1.xml'))
 cells={c.attrib['r']:c for c in s.findall('.//s:c',ns)}
-assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'SKU','Qty','Unit Price','Total Price','Requested Ship Date','Requested Delivery Date']
+assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'SKU','Qty','Unit Price','Total Qty for same PO','Total Price for same PO','Total Qty for same SKU','Total Price for same SKU','Requested Ship Date','Requested Delivery Date']
 assert cells['A2'].attrib['t']=='inlineStr'
 assert cells['A2'].find('.//s:t',ns).text=='0069749254'
 assert cells['B2'].attrib['t']=='inlineStr'
@@ -273,19 +326,25 @@ assert [cells[f'C{i}'].find('.//s:t',ns).text for i in range(2,6)]==['003278934'
 assert s.find('.//s:f',ns) is None
 assert int(cells['D2'].find('s:v',ns).text)==2
 assert float(cells['E2'].find('s:v',ns).text)==17.25
-assert [float(cells[f'F{i}'].find('s:v',ns).text) for i in range(2,6)]==[34.5,51.75,17250,-25.88]
+assert [float(cells[f'F{i}'].find('s:v',ns).text) for i in range(2,6)]==[1005,1005,1005,-1.5]
+assert [float(cells[f'G{i}'].find('s:v',ns).text) for i in range(2,6)]==[17336.25,17336.25,17336.25,-25.88]
+assert [float(cells[f'H{i}'].find('s:v',ns).text) for i in range(2,6)]==[0.5,3,1000,0.5]
+assert [float(cells[f'I{i}'].find('s:v',ns).text) for i in range(2,6)]==[8.62,51.75,17250,8.62]
 assert float(cells['D5'].find('s:v',ns).text)==-1.5
-assert int(cells['G2'].find('s:v',ns).text)==46266
-assert int(cells['H2'].find('s:v',ns).text)==46274
+assert int(cells['J2'].find('s:v',ns).text)==46266
+assert int(cells['K2'].find('s:v',ns).text)==46274
 styles=E.fromstring(z.read('xl/styles.xml'))
 formats={f.attrib['numFmtId']:f.attrib['formatCode'] for f in styles.findall('s:numFmts/s:numFmt',ns)}
 xfs=styles.findall('s:cellXfs/s:xf',ns)
-assert formats[xfs[int(cells['G2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
-assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['J2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['K2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
 assert xfs[int(cells['E2'].attrib['s'])].attrib['numFmtId']=='4'
-assert xfs[int(cells['F2'].attrib['s'])].attrib['numFmtId']=='4'
+assert xfs[int(cells['G2'].attrib['s'])].attrib['numFmtId']=='4'
+assert xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']=='4'
 assert xfs[int(cells['D5'].attrib['s'])].attrib['numFmtId']=='0'
-assert s.find('s:autoFilter',ns).attrib['ref']=='A1:H5'
+assert xfs[int(cells['F5'].attrib['s'])].attrib['numFmtId']=='0'
+assert xfs[int(cells['H5'].attrib['s'])].attrib['numFmtId']=='0'
+assert s.find('s:autoFilter',ns).attrib['ref']=='A1:K5'
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'
 print(json.dumps({'rows':len(s.findall('.//s:row',ns)),'columns':len(s.findall('.//s:row',ns)[0])}))
 `], { input: bytes, maxBuffer: 1024 * 1024 });
@@ -299,7 +358,7 @@ test("orders with hundreds of items keep separate rows without aggregated identi
   const bytes = await createWorkbook(lines);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   const main = await zip.file("xl/worksheets/sheet1.xml").async("string");
-  assert.match(main, /dimension ref="A1:H256"/);
+  assert.match(main, /dimension ref="A1:K256"/);
   assert.equal((main.match(/<row /g) ?? []).length, 256);
   assert.equal(zip.file("xl/worksheets/sheet2.xml"), null);
   for (const row of lines) assert.ok(main.includes(row.vendor_style));
@@ -311,8 +370,8 @@ test("export rejects an oversized individual style and preserves blank missing d
   const bytes = await createWorkbook([{ ...row, requested_ship: null, requested_del: null }]);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   const sheet = await zip.file("xl/worksheets/sheet1.xml").async("string");
-  assert.match(sheet, /<c r="G2" s="1"\/>/);
-  assert.match(sheet, /<c r="H2" s="1"\/>/);
+  assert.match(sheet, /<c r="J2" s="1"\/>/);
+  assert.match(sheet, /<c r="K2" s="1"\/>/);
 });
 
 test("batch ZIP disambiguates duplicate filenames and preserves separate workbooks", async () => {
@@ -323,7 +382,7 @@ test("batch ZIP disambiguates duplicate filenames and preserves separate workboo
   for (const item of Object.values(zip.files)) {
     const workbook = await globalThis.JSZip.loadAsync(await item.async("uint8array"));
     assert.ok(workbook.file("xl/worksheets/sheet1.xml"));
-    assert.match(await workbook.file("xl/worksheets/sheet1.xml").async("string"), /dimension ref="A1:H5"/);
+    assert.match(await workbook.file("xl/worksheets/sheet1.xml").async("string"), /dimension ref="A1:K5"/);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");
   await assert.rejects(createWorkbook([]), /no extracted purchase orders/);
