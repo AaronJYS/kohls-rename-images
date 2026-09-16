@@ -138,7 +138,7 @@ function render() {
     li.textContent = warning;
     return li;
   }));
-  $("pdf-action-title").textContent = warnings.length ? "Review the notes before downloading." : "Your workbook is ready.";
+  $("pdf-action-title").textContent = "Ready.";
   renderTable();
 }
 
@@ -199,6 +199,14 @@ async function addFiles(incoming) {
   if (duplicates) notes.push(`${duplicates} already-selected PDF(s) were skipped.`);
   message(notes.join(" "), failed || errors.length || stopped ? "warning" : "");
   render();
+  requestAnimationFrame(() => {
+    if (!stopped && added.some((entry) => entry.result) && !$("pdf-tool").hidden) {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      });
+    }
+  });
 }
 
 $("select-pdfs").addEventListener("click", () => $("pdf-files").click());
@@ -240,9 +248,8 @@ async function download(all) {
       ? await createWorkbookArchive(readyFiles().map((entry) => ({ name: entry.file.name, records: entry.result.orders })))
       : await createWorkbook(file.result.orders);
     const name = all ? "AAFES_purchase_orders.zip" : outputName(file.file.name);
-    const count = all ? readyFiles().length : 1;
     downloadFile(data, name);
-    successMessage = `Created ${name}. ${count} ${count === 1 ? "workbook" : "workbooks"} exported`;
+    successMessage = "Check downloads folder.";
   } catch (error) { message(`The download could not be prepared. ${error.message}`, "error"); }
   finally { exporting = false; render(); }
   if (successMessage) {

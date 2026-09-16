@@ -39,15 +39,15 @@ function refreshAction() {
     blocked ||
     (!plan.files.length && !plan.directories.length);
   if (completed || copying) return;
-  $("action-description").hidden = false;
+  $("action-description").hidden = !blocked;
   $("action-title").textContent = blocked
     ? "Resolve the unrecognized colors first."
     : plan && !plan.files.length && !plan.directories.length
       ? "This folder is empty."
-      : "Ready to create your copy?";
+      : "Ready.";
   $("action-description").textContent = blocked
     ? "Add a color CSV, or turn off the color requirement in Naming options."
-    : "The new folder includes a CSV log of the filenames.";
+    : "";
 }
 
 function bytes(value) {
@@ -169,6 +169,14 @@ $("select-folder").addEventListener("click", async () => {
       `${plan.files.length} files found. Review the names below.`;
     $("source-status").textContent = "";
     $("select-folder").querySelector("span").textContent = "Change folder";
+    requestAnimationFrame(() => {
+      if (!$("image-tool").hidden) {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+        });
+      }
+    });
   } catch (error) {
     if (selected) {
       source = null;
@@ -254,6 +262,7 @@ $("create-folder").addEventListener("click", async () => {
   $("progress-label").textContent = "Preparing your copy…";
   $("progress-file").textContent = "";
   $("action-title").textContent = "Creating your renamed folder…";
+  $("action-description").hidden = false;
   $("action-description").textContent =
     "Keep this tab open until the copy is complete.";
   $("source-status").textContent = "Copying";
@@ -302,8 +311,7 @@ $("create-folder").addEventListener("click", async () => {
     $("progress-file").textContent = `Log saved as ${result.logName}`;
     $("output-path").textContent = `${source.name} / ${result.outputName}`;
     $("source-status").textContent = "Complete";
-    $("action-title").textContent =
-      `Created ${source.name}/${result.outputName}. ${result.completedFiles} files copied`;
+    $("action-title").textContent = "Check original folder.";
     $("action-description").textContent = "";
     $("action-description").hidden = true;
   } catch (error) {

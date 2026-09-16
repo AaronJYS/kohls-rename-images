@@ -851,37 +851,33 @@ select:focus-visible {
   margin-top: 8px;
 }
 .workbook-fields {
-  margin: 24px 0 0;
+  margin: 20px 0 0;
+  padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 .workbook-fields > div {
   display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 18px;
-  padding: 15px 0;
-  border-bottom: 1px solid #eeedf0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.workbook-fields .field-group-start {
+  margin-top: 14px;
 }
 .workbook-fields dt {
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.85;
+  font-weight: 600;
 }
 .workbook-fields dd {
-  margin: 2px 0 0;
-}
-.format-label {
-  display: inline-block;
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 5px;
-  background: var(--accent-soft);
-  padding: 3px 7px;
-}
-.workbook-fields dd p {
+  margin: 0;
   color: var(--muted);
-  font-size: 12px;
-  margin-top: 7px;
+}
+@container (max-width: 320px) {
+  .workbook-fields > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 .pdf-queue {
   padding: 0 var(--panel-gutter);
