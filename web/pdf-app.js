@@ -17,7 +17,6 @@ const currentFile = () => files.find((file) => file.id === selectedId && file.re
 
 function controls() {
   $("select-pdfs").disabled = busy || exporting;
-  $("clear-pdfs").disabled = busy || exporting;
   $("download-excel").disabled = busy || exporting || !currentFile();
   $("download-pdf-zip").disabled = busy || exporting;
   $("download-pdf-zip").hidden = readyFiles().length < 2;
@@ -29,7 +28,6 @@ function controls() {
 
 function renderFiles() {
   $("pdf-queue").hidden = !files.length;
-  $("pdf-file-count").textContent = `${files.length} ${files.length === 1 ? "FILE" : "FILES"} SELECTED`;
   $("pdf-file-list").replaceChildren(...files.map((file) => {
     const li = document.createElement("li");
     const info = document.createElement("div");
@@ -215,7 +213,6 @@ $("pdf-files").addEventListener("change", (event) => {
   event.target.value = "";
   void addFiles(chosen);
 });
-$("clear-pdfs").addEventListener("click", () => { files = []; selectedId = null; page = 0; message(""); render(); });
 $("stop-pdfs").addEventListener("click", () => { controller?.abort(); $("stop-pdfs").disabled = true; });
 $("pdf-preview-file").addEventListener("change", (event) => { selectedId = Number(event.target.value); page = 0; render(); });
 $("pdf-previous-page").addEventListener("click", () => { page--; renderTable(); });

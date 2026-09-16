@@ -875,12 +875,6 @@ select:focus-visible {
   padding: 0 var(--panel-gutter);
   border-top: 1px solid var(--border);
 }
-.queue-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-}
 .pdf-file-list {
   list-style: none;
   padding: 0 8px;
@@ -895,6 +889,9 @@ select:focus-visible {
   gap: 18px;
   padding: 12px 0;
   border-top: 1px solid #eeedf0;
+}
+.pdf-file-list li:first-child {
+  border-top: 0;
 }
 .pdf-file-list li > div {
   min-width: 0;
