@@ -3,6 +3,7 @@
 export const COLUMNS = [
   ["po", "PO", "text"],
   ["vendor_style", "Vendor's Style", "text"],
+  ["sku", "SKU", "text"],
   ["qty", "Qty", "number"],
   ["price", "Unit Price", "money"],
   ["total_price", "Total Price", "money"],

@@ -10,6 +10,7 @@ PDF produces its own workbook with a **Purchase Orders** sheet.
 | --- | --- |
 | PO | Document number in the upper-right header, beneath `Stand-alone Order`. Preserve the 8–12 digit number as text, including leading zeros. |
 | Vendor's Style | The item's code directly beneath `Vendor's Style #`. An inline value after the label is also supported. Preserve the code as text, including leading zeros and punctuation. |
+| SKU | First number under `SKU #` on the item's line. Preserve it as text, including leading zeros. |
 | Qty | First quantity on the item's line under the PDF's `Qty` column. Additional values farther down the detail block are not added or substituted. |
 | Unit Price | Numeric value under `Price` on the same item line. |
 | Total Price | `Unit Price × Qty`, rounded to two decimal places. This is the item total, independent of the PDF's printed line amount or full PO total. |
@@ -56,7 +57,7 @@ conversion failures directly and does not display a separate issues panel.
 
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
-two decimal places. The header is frozen, filters span **A:G**, and column widths
+two decimal places. The header is frozen, filters span **A:H**, and column widths
 fit the data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the
@@ -72,7 +73,7 @@ The coordinate-based extraction foundation is ported from
 [AAfes_Pdf_to_Excel](https://github.com/JYS-Enterprise-Inc/AAfes_Pdf_to_Excel)
 at commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. Internal source fields remain
 available for extraction parity and reconciliation; the preview and export use
-the seven fields above.
+the eight fields above.
 
 Synthetic fixtures verify extraction parity, multiple POs, continuation pages,
 duplicate lines, leading zeros, item-specific styles and quantities, calculated

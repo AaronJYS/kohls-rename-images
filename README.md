@@ -42,6 +42,7 @@ per line item and these columns, in order:
 | --- | --- | --- |
 | PO | Document number beneath the document type | Text |
 | Vendor's Style | Code directly beneath `Vendor's Style #` for the item | Text |
+| SKU | First number under `SKU #` for the item, with leading zeros preserved | Text |
 | Qty | First number in the item's Qty column | Number |
 | Unit Price | Value in the item's Price column | Number, two decimal places |
 | Total Price | Unit Price × Qty for that item | Number, two decimal places |
@@ -51,7 +52,7 @@ per line item and these columns, in order:
 The header is frozen, filters are enabled, and column widths fit the data.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom
 borders, and regular headers. Date and number formats are preserved.
-PO and style identifiers preserve leading zeros. Multiple items from the same
+PO, style, and SKU identifiers preserve leading zeros. Multiple items from the same
 PO remain separate rows, in source order. Total Price is calculated from that
 item's unit price and quantity, rounded to two decimal places; printed line
 amounts and full PO totals do not replace it.
@@ -64,7 +65,7 @@ commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. It locates the PO number in t
 top-right header, detects table columns from their positions, groups words into
 rows with a 2.5-point tolerance, follows continuation pages, reads vendor styles
 and requested dates, removes repeated `(PO, line number)` pairs, and totals
-amounts within each PDF. The seven-column export includes one row per unique PO
+amounts within each PDF. The eight-column export includes one row per unique PO
 line, with one workbook per PDF. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
 for layout anchors and derivations.
 

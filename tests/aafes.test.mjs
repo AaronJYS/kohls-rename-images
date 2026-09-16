@@ -58,16 +58,16 @@ test("all extracted fields match the original Python converter's result for the 
   assert.deepEqual(actual, expected);
 });
 
-test("the seven-column layout maps each item's style, quantity, prices, and requested dates", () => {
+test("the eight-column layout maps each item's style, SKU, quantity, prices, and requested dates", () => {
   assert.deepEqual(COLUMNS.map(([, label]) => label), [
-    "PO", "Vendor's Style", "Qty", "Unit Price", "Total Price", "Requested Ship Date", "Requested Delivery Date",
+    "PO", "Vendor's Style", "SKU", "Qty", "Unit Price", "Total Price", "Requested Ship Date", "Requested Delivery Date",
   ]);
   const { records, warnings } = extractPages(fixtures);
   assert.deepEqual(records.map((row) => COLUMNS.map(([key]) => row[key])), [
-    ["0069749254", "BX06772.BK", 2, 17.25, 34.5, "2026-09-01", "2026-09-09"],
-    ["0069749254", "22003.NV", 3, 17.25, 51.75, "2026-09-01", "2026-09-09"],
-    ["0069749254", "70000.CG", 1000, 17.25, 17250, "2026-09-01", "2026-09-09"],
-    ["0069749253", "RETURN.BK", -1, 17.25, -17.25, "2026-09-01", "2026-09-09"],
+    ["0069749254", "BX06772.BK", "003278934", 2, 17.25, 34.5, "2026-09-01", "2026-09-09"],
+    ["0069749254", "22003.NV", "000765432", 3, 17.25, 51.75, "2026-09-01", "2026-09-09"],
+    ["0069749254", "70000.CG", "009999999", 1000, 17.25, 17250, "2026-09-01", "2026-09-09"],
+    ["0069749253", "RETURN.BK", "003278934", -1, 17.25, -17.25, "2026-09-01", "2026-09-09"],
   ]);
   assert.equal(warnings.length, 1); // Only the intentional repeated line.
 });
@@ -259,7 +259,7 @@ for name in z.namelist():
 ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 s=E.fromstring(z.read('xl/worksheets/sheet1.xml'))
 cells={c.attrib['r']:c for c in s.findall('.//s:c',ns)}
-assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'Qty','Unit Price','Total Price','Requested Ship Date','Requested Delivery Date']
+assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'SKU','Qty','Unit Price','Total Price','Requested Ship Date','Requested Delivery Date']
 assert cells['A2'].attrib['t']=='inlineStr'
 assert cells['A2'].find('.//s:t',ns).text=='0069749254'
 assert cells['B2'].attrib['t']=='inlineStr'
@@ -268,22 +268,24 @@ assert cells['B3'].find('.//s:t',ns).text=='22003.NV'
 assert cells['B4'].find('.//s:t',ns).text=='70000.CG'
 assert cells['B5'].find('.//s:t',ns).text.startswith('=HYPERLINK')
 assert cells['A5'].find('.//s:t',ns).text=='0069749253'
+assert all(cells[f'C{i}'].attrib['t']=='inlineStr' for i in range(2,6))
+assert [cells[f'C{i}'].find('.//s:t',ns).text for i in range(2,6)]==['003278934','000765432','009999999','003278934']
 assert s.find('.//s:f',ns) is None
-assert int(cells['C2'].find('s:v',ns).text)==2
-assert float(cells['D2'].find('s:v',ns).text)==17.25
-assert [float(cells[f'E{i}'].find('s:v',ns).text) for i in range(2,6)]==[34.5,51.75,17250,-25.88]
-assert float(cells['C5'].find('s:v',ns).text)==-1.5
-assert int(cells['F2'].find('s:v',ns).text)==46266
-assert int(cells['G2'].find('s:v',ns).text)==46274
+assert int(cells['D2'].find('s:v',ns).text)==2
+assert float(cells['E2'].find('s:v',ns).text)==17.25
+assert [float(cells[f'F{i}'].find('s:v',ns).text) for i in range(2,6)]==[34.5,51.75,17250,-25.88]
+assert float(cells['D5'].find('s:v',ns).text)==-1.5
+assert int(cells['G2'].find('s:v',ns).text)==46266
+assert int(cells['H2'].find('s:v',ns).text)==46274
 styles=E.fromstring(z.read('xl/styles.xml'))
 formats={f.attrib['numFmtId']:f.attrib['formatCode'] for f in styles.findall('s:numFmts/s:numFmt',ns)}
 xfs=styles.findall('s:cellXfs/s:xf',ns)
-assert formats[xfs[int(cells['F2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
 assert formats[xfs[int(cells['G2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
-assert xfs[int(cells['D2'].attrib['s'])].attrib['numFmtId']=='4'
+assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
 assert xfs[int(cells['E2'].attrib['s'])].attrib['numFmtId']=='4'
-assert xfs[int(cells['C5'].attrib['s'])].attrib['numFmtId']=='0'
-assert s.find('s:autoFilter',ns).attrib['ref']=='A1:G5'
+assert xfs[int(cells['F2'].attrib['s'])].attrib['numFmtId']=='4'
+assert xfs[int(cells['D5'].attrib['s'])].attrib['numFmtId']=='0'
+assert s.find('s:autoFilter',ns).attrib['ref']=='A1:H5'
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'
 print(json.dumps({'rows':len(s.findall('.//s:row',ns)),'columns':len(s.findall('.//s:row',ns)[0])}))
 `], { input: bytes, maxBuffer: 1024 * 1024 });
@@ -297,7 +299,7 @@ test("orders with hundreds of items keep separate rows without aggregated identi
   const bytes = await createWorkbook(lines);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   const main = await zip.file("xl/worksheets/sheet1.xml").async("string");
-  assert.match(main, /dimension ref="A1:G256"/);
+  assert.match(main, /dimension ref="A1:H256"/);
   assert.equal((main.match(/<row /g) ?? []).length, 256);
   assert.equal(zip.file("xl/worksheets/sheet2.xml"), null);
   for (const row of lines) assert.ok(main.includes(row.vendor_style));
@@ -309,8 +311,8 @@ test("export rejects an oversized individual style and preserves blank missing d
   const bytes = await createWorkbook([{ ...row, requested_ship: null, requested_del: null }]);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   const sheet = await zip.file("xl/worksheets/sheet1.xml").async("string");
-  assert.match(sheet, /<c r="F2" s="1"\/>/);
   assert.match(sheet, /<c r="G2" s="1"\/>/);
+  assert.match(sheet, /<c r="H2" s="1"\/>/);
 });
 
 test("batch ZIP disambiguates duplicate filenames and preserves separate workbooks", async () => {
@@ -321,7 +323,7 @@ test("batch ZIP disambiguates duplicate filenames and preserves separate workboo
   for (const item of Object.values(zip.files)) {
     const workbook = await globalThis.JSZip.loadAsync(await item.async("uint8array"));
     assert.ok(workbook.file("xl/worksheets/sheet1.xml"));
-    assert.match(await workbook.file("xl/worksheets/sheet1.xml").async("string"), /dimension ref="A1:G5"/);
+    assert.match(await workbook.file("xl/worksheets/sheet1.xml").async("string"), /dimension ref="A1:H5"/);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");
   await assert.rejects(createWorkbook([]), /no extracted purchase orders/);

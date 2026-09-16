@@ -883,7 +883,7 @@ select:focus-visible {
   text-overflow: ellipsis;
 }
 .pdf-table {
-  min-width: 1020px;
+  min-width: 1140px;
 }
 .pdf-table th,
 .pdf-table td {
