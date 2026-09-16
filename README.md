@@ -45,13 +45,13 @@ per Document Num and these columns:
 | Store Num | Store # in the shipping address | Text |
 | Currency Code | Intentionally blank | Blank |
 | Amount | Full printed PO total, once per order | Number, two decimal places |
-| Date Processed | Local calendar date when the batch is selected | Date (`mm/dd/yyyy`) |
-| Date Ack | Date directly beneath the PO number | Date (`mm/dd/yyyy`) |
+| Date Processed | Local calendar date when the batch is selected | Date (`yyyy/mm/dd`) |
+| Date Ack | Date directly beneath the PO number | Date (`yyyy/mm/dd`) |
 | Business System Code | `211` | Number |
 | Integration Status | `0` | Number |
 | User Defined Field #1 | All SKUs, in source line-item order | Text, one value per line within the cell |
 | User Defined Field #2 | All UPCs, in matching source line-item order | Text, one value per line within the cell |
-| User Defined Field #3 | Requested Ship in the delivery schedule | Date (`m/d/yyyy`) |
+| User Defined Field #3 | Requested Ship in the delivery schedule | Date (`yyyy/mm/dd`) |
 
 The header is frozen, filters are enabled, and column widths fit the data.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom

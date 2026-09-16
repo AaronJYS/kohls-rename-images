@@ -64,7 +64,7 @@ function formatValue(key, type, value) {
   if (type === "number") return String(value);
   if (type === "date" || type === "date-short") {
     const [year, month, day] = value.split("-");
-    return type === "date" ? `${month}/${day}/${year}` : `${Number(month)}/${Number(day)}/${year}`;
+    return `${year}/${month}/${day}`;
   }
   return value;
 }

@@ -226,9 +226,9 @@ assert int(cells['N2'].find('s:v',ns).text)==46266
 styles=E.fromstring(z.read('xl/styles.xml'))
 formats={f.attrib['numFmtId']:f.attrib['formatCode'] for f in styles.findall('s:numFmts/s:numFmt',ns)}
 xfs=styles.findall('s:cellXfs/s:xf',ns)
-assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='mm/dd/yyyy'
-assert formats[xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']]=='mm/dd/yyyy'
-assert formats[xfs[int(cells['N2'].attrib['s'])].attrib['numFmtId']]=='m/d/yyyy'
+assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['N2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
 assert xfs[int(cells['L2'].attrib['s'])].find('s:alignment',ns).attrib['wrapText']=='1'
 assert s.find('s:autoFilter',ns).attrib['ref']=='A1:N3'
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'

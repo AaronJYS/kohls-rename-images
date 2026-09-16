@@ -16,13 +16,13 @@ into **one row per Document Num**, with one workbook per input PDF.
 | Store Num | Read the number after `Store #` in the shipping address. Preserve it as text. |
 | Currency Code | Always blank. |
 | Amount | Read the right-aligned printed order total below the final `Package Description` / notes block. Include it once in the order row. |
-| Date Processed | Local calendar date at the start of the file selection, shared by every file in that batch. Display `mm/dd/yyyy`. |
-| Date Ack | Read the nearest date directly below the PO number, aligned with its right edge. Display `mm/dd/yyyy`. |
+| Date Processed | Local calendar date at the start of the file selection, shared by every file in that batch. Display `yyyy/mm/dd`. |
+| Date Ack | Read the nearest date directly below the PO number, aligned with its right edge. Display `yyyy/mm/dd`. |
 | Business System Code | Constant numeric `211`. |
 | Integration Status | Constant numeric `0`. |
 | User Defined Field #1 | All SKUs in source line-item order, separated by line breaks within one text cell. |
 | User Defined Field #2 | All UPCs in the same line-item order, separated by line breaks within one text cell. |
-| User Defined Field #3 | Date under `Requested Ship`, carried across that PO's continuation pages. Display `m/d/yyyy`. |
+| User Defined Field #3 | Date under `Requested Ship`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 
 The board labels both the SKU and UPC annotations “User Defined Field #1.”
 The implementation interprets the UPC annotation as **#2**, with SKU as **#1**
