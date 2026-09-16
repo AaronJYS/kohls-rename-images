@@ -22,7 +22,7 @@ function controls() {
   $("download-pdf-zip").disabled = busy || exporting;
   $("download-pdf-zip").hidden = readyFiles().length < 2;
   $("pdf-preview-file").disabled = exporting;
-  $("pdf-source-status").textContent = busy ? "Reading PDFs" : files.length ? `${readyFiles().length} ready` : "";
+  $("pdf-source-status").textContent = busy ? "Reading PDFs" : "";
   $("select-pdfs").querySelector("span").textContent = files.length ? "Add PDFs" : "Select PDFs";
   $("pdf-drop-zone").setAttribute("aria-busy", String(busy));
 }
@@ -39,7 +39,7 @@ function renderFiles() {
     const status = document.createElement("span");
     status.className = `pdf-file-status${file.error ? " file-error" : ""}`;
     status.textContent = file.error || (file.result
-      ? `${file.result.orderCount} purchase orders · ${file.result.pageCount} pages${file.result.warnings.length ? " · Review notes" : " · Ready"}`
+      ? `${file.result.orderCount} purchase orders · ${file.result.pageCount} pages${file.result.warnings.length ? " · Review notes" : ""}`
       : file.status);
     info.append(name, status);
     const remove = document.createElement("button");

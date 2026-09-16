@@ -56,39 +56,6 @@ function bytes(value) {
   return `${(value / 1024 ** unit).toFixed(unit === 1 ? 0 : 1)} ${["B", "KB", "MB", "GB", "TB"][unit]}`;
 }
 
-function displayWarnings() {
-  const warnings = [...plan.notes];
-  if (plan.unknownColors.length)
-    warnings.push(
-      `Unrecognized colors will keep their original spelling: ${plan.unknownColors.join(", ")}.`,
-    );
-  if (plan.collisions)
-    warnings.push(
-      `${plan.collisions} filename collision(s) resolved with _DUP2, _DUP3, etc. Review those output names.`,
-    );
-  if (plan.skipped.length)
-    warnings.push(
-      `${plan.skipped.length} image(s) do not match the naming pattern and will be copied unchanged: ${plan.skipped
-        .slice(0, 10)
-        .map((file) => file.relativePath)
-        .join(", ")}${plan.skipped.length > 10 ? ", …" : ""}.`,
-    );
-  if (snapshot.excluded.length)
-    warnings.push(
-      `Earlier output folders excluded: ${snapshot.excluded.join(", ")}.`,
-    );
-  $("warnings").hidden = !warnings.length;
-  $("warnings-summary").textContent =
-    `${warnings.length} ${warnings.length === 1 ? "item" : "items"} to review`;
-  $("warnings-list").replaceChildren(
-    ...warnings.map((text) => {
-      const li = document.createElement("li");
-      li.textContent = text;
-      return li;
-    }),
-  );
-}
-
 function renderTable() {
   const totalPages = Math.max(1, Math.ceil(plan.files.length / PAGE_SIZE));
   page = Math.max(0, Math.min(page, totalPages - 1));
@@ -130,12 +97,10 @@ function renderPlan() {
   completed = false;
   $("progress-area").hidden = true;
   $("preview").hidden = false;
-  $("summary").textContent =
-    `${plan.groupCount} style/color ${plan.groupCount === 1 ? "group" : "groups"} · ${bytes(plan.totalBytes)}`;
   const stats = [
     [plan.matched, "images matched"],
     [plan.unchanged, "files copied as is"],
-    [plan.directories.length, "subfolders"],
+    [plan.groupCount, `style/color ${plan.groupCount === 1 ? "group" : "groups"}`],
   ];
   $("stats").replaceChildren(
     ...stats.map(([value, label]) => {
@@ -147,7 +112,6 @@ function renderPlan() {
       return stat;
     }),
   );
-  displayWarnings();
   renderTable();
   refreshAction();
 }
@@ -203,7 +167,7 @@ $("select-folder").addEventListener("click", async () => {
     renderPlan();
     $("folder-description").textContent =
       `${plan.files.length} files found. Review the names below.`;
-    $("source-status").textContent = "Ready to preview";
+    $("source-status").textContent = "";
     $("select-folder").querySelector("span").textContent = "Change folder";
   } catch (error) {
     if (selected) {
