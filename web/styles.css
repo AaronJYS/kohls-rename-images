@@ -301,6 +301,7 @@ h2 {
 }
 #color-status {
   margin-top: 6px;
+  overflow-wrap: anywhere;
 }
 .checkbox-label {
   display: flex;
@@ -310,12 +311,13 @@ h2 {
 }
 .checkbox-label input {
   accent-color: var(--accent);
+  margin: 0;
   width: 16px;
   height: 16px;
   flex-shrink: 0;
 }
 .rules-panel {
-  padding: 27px 29px;
+  padding: 27px var(--panel-gutter);
   background: #fff;
   container-type: inline-size;
   min-width: 0;
@@ -365,7 +367,7 @@ h2 {
   font-weight: 650;
 }
 .example-arrow {
-  color: #b4a3ac;
+  color: #8b8995;
   font-size: 16px;
   text-align: center;
 }
@@ -669,7 +671,7 @@ progress::-moz-progress-bar {
     grid-template-columns: 1.2fr 1fr;
   }
   .rules-panel {
-    padding: 25px;
+    padding: 25px var(--panel-gutter);
   }
   .panel-heading {
     padding-block: 20px;
@@ -702,7 +704,7 @@ progress::-moz-progress-bar {
     grid-template-columns: 1fr;
   }
   .rules-panel {
-    padding: 25px;
+    padding: 25px var(--panel-gutter);
   }
   .page-heading {
     margin-bottom: 23px;
@@ -936,6 +938,14 @@ select:focus-visible {
   min-width: auto;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+.pdf-table th:first-child,
+.pdf-table td:first-child {
+  padding-left: var(--panel-gutter);
+}
+.pdf-table th:last-child,
+.pdf-table td:last-child {
+  padding-right: var(--panel-gutter);
 }
 .pdf-table td {
   font-family: inherit;
