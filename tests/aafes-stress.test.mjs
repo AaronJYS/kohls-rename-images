@@ -73,7 +73,8 @@ test("comma decimals produce the correct fallback total when no printed total ex
   assert.equal(result.records.length, 2);
   assert.deepEqual(result.records.map((row) => row.amount), [34.5, 51.75]);
   assert.equal(result.orders[0].order_total, 86.25);
-  assert.match(result.warnings.join(" "), /no printed total/);
+  assert.deepEqual(result.records.map((row) => row.total_price), [34.5, 51.75]);
+  assert.ok(!result.warnings.some((warning) => /no printed total/.test(warning)));
 });
 
 test("trailing numeric footers cannot replace a printed total", () => {

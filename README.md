@@ -29,38 +29,32 @@ Selecting a generated output itself is rejected; select its original parent.
 
 Open **PDF to Excel** (or `/#pdf-to-excel`), then select or drop one or more
 text-based AAFES **Stand-alone Order** PDFs. Extraction starts automatically.
-Review the rows and any warnings, then choose **Download Excel** for the selected
+Review the rows, then choose **Download Excel** for the selected
 PDF or **Download all (ZIP)** for all successful workbooks. Failed PDFs are listed
 individually and do not prevent the remaining files from being processed.
+The interface shows file selection, the item preview, and download controls.
+The file switcher appears when multiple converted PDFs are available.
 
 Each `<source>_extracted.xlsx` contains a **Purchase Orders** sheet with one row
-per Document Num and these columns:
+per line item and these columns, in order:
 
 | Column | Source / value | Excel type |
 | --- | --- | --- |
-| Trading Partner | AAFES in the centered page heading | Text |
-| Document Type | Stand-alone Order in the upper-right header | Text |
-| Document Num | PO number beneath the document type | Text |
-| Alt Document | `Vendor <Vendor #> MF` | Text |
-| Store Num | Store # in the shipping address | Text |
-| Currency Code | Intentionally blank | Blank |
-| Amount | Full printed PO total, once per order | Number, two decimal places |
-| Date Processed | Local calendar date when the batch is selected | Date (`yyyy/mm/dd`) |
-| Date Ack | Date directly beneath the PO number | Date (`yyyy/mm/dd`) |
-| Business System Code | `211` | Number |
-| Integration Status | `0` | Number |
-| User Defined Field #1 | All SKUs, in source line-item order | Text, one value per line within the cell |
-| User Defined Field #2 | All UPCs, in matching source line-item order | Text, one value per line within the cell |
-| User Defined Field #3 | Requested Ship in the delivery schedule | Date (`yyyy/mm/dd`) |
+| PO | Document number beneath the document type | Text |
+| Vendor's Style | Code directly beneath `Vendor's Style #` for the item | Text |
+| Qty | First number in the item's Qty column | Number |
+| Unit Price | Value in the item's Price column | Number, two decimal places |
+| Total Price | Unit Price × Qty for that item | Number, two decimal places |
+| Requested Ship Date | Date under Requested Ship | Date (`yyyy/mm/dd`) |
+| Requested Delivery Date | Date under Requested Delivery | Date (`yyyy/mm/dd`) |
 
 The header is frozen, filters are enabled, and column widths fit the data.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom
 borders, and regular headers. Date and number formats are preserved.
-Identifiers preserve leading zeros. SKU and UPC entries remain paired, including
-repeated values and blank positions for missing identifiers. The preview shows
-expandable lists within each order row. If either list exceeds Excel's cell
-limits (32,767 characters or 253 line breaks), both cells point to an additional **Order Items** sheet
-containing the complete pairs and source line numbers for that order.
+PO and style identifiers preserve leading zeros. Multiple items from the same
+PO remain separate rows, in source order. Total Price is calculated from that
+item's unit price and quantity, rounded to two decimal places; printed line
+amounts and full PO totals do not replace it.
 Workbooks are downloaded through the browser; source
 PDFs are not changed. Duplicate output names inside ZIPs receive `_2`, `_3`, etc.
 
@@ -70,37 +64,39 @@ commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. It locates the PO number in t
 top-right header, detects table columns from their positions, groups words into
 rows with a 2.5-point tolerance, follows continuation pages, reads vendor styles
 and requested dates, removes repeated `(PO, line number)` pairs, and totals
-amounts within each PDF. The requested 14-column mapping replaces the original
-eight-column export. Unique PO lines are grouped into one row per purchase order,
-with one workbook per PDF. See [the extraction mapping](docs/pdf-to-excel-mapping.md) for layout
-anchors, derivations, and the interpretation of the Boardfish annotations.
+amounts within each PDF. The seven-column export includes one row per unique PO
+line, with one workbook per PDF. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
+for layout anchors and derivations.
 
 Browser adaptations:
+
+Parser diagnostics remain available internally for validation; the interface
+shows conversion errors without an issues dropdown or review-note badges.
 
 - PDF.js extracts positioned text in a local worker; JSZip packages Excel's
   standard XML files. Both are pinned and bundled in `web/vendor/` with licenses.
 - Extraction uses unrotated page coordinates normalized to a consistent width,
   so stored page rotations and uniformly scaled PDFs retain the same layout anchors.
-- Quantity and amount validation share one number parser. Accounting negatives,
+- Quantity and unit price validation share one number parser. Accounting negatives,
   currency symbols, dot/comma decimals, and properly grouped thousands are
   supported. `1,234` keeps the AAFES thousands meaning; `12,50` means `12.50`.
 - Dates, store, and column layout reset when a different PO begins, preventing
   metadata from leaking from the previous PO when headers are missing.
-- The Vendor # value is found within its header cell, including when the label
-  is centered and the value is left-aligned. This is distinct from Vendor's Style #.
+- Vendor's Style comes from the item's detail block, not its SKU or the order's
+  Vendor #. Inline style values are also supported.
 - Printed totals below the final Package Description block are checked against
-  the sum of unique line amounts. A mismatch produces a warning; Amount uses
-  the printed total. If no printed total is found, the original calculated
-  total is used and a review warning is shown.
+  the sum of unique line amounts. A mismatch produces a warning. This diagnostic
+  does not change the exported Total Price. Missing printed amounts do not
+  prevent conversion when quantity and unit price are readable.
 - The first standalone amount after Package Description closes that block.
   Later numeric footer values are ignored with a review warning and cannot
   overwrite the printed total, even if a footer value matches the line sum.
-- Date Processed is captured once per file selection in the user's local
-  timezone. Date Ack comes from the PO header, not the footer or requested dates.
+- Both requested dates come from the delivery schedule and carry forward only
+  within the same PO. Missing dates stay blank with a review warning.
 - Unreadable lines, missing fields, unsupported pages, and conflicting duplicate
   lines produce review warnings. For duplicate lines, the first copy is kept.
-- Conflicting order metadata uses the first nonblank value and produces a review
-  warning. Amount remains the order total; grouping does not add repeated totals.
+- Conflicting requested dates produce a review warning, and each exported item
+  retains its own extracted dates.
 - Leading-zero identifiers and formula-looking text are always written as text.
 - The browser processes one PDF at a time. Stop cancels the current extraction;
   already-completed PDFs remain available. Remove a stopped file and add it again

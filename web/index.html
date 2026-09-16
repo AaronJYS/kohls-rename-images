@@ -255,12 +255,11 @@
           <section class="source-panel" aria-labelledby="pdf-source-heading">
             <div class="panel-heading">
               <h2 id="pdf-source-heading"><span class="step">01</span>Select your purchase orders</h2>
-              <span id="pdf-source-status" class="muted small"></span>
             </div>
             <div id="pdf-drop-zone" class="folder-picker pdf-picker">
               <svg class="folder-icon" viewBox="0 0 56 48" aria-hidden="true"><path d="M31 3H13a3 3 0 0 0-3 3v36a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V18Z M31 3v15h15 M18 25h20m-20 7h20m-20 7h12"/></svg>
               <h3>Drop your purchase order PDFs here</h3>
-              <p>Choose one file or a batch. Each gets its own workbook.</p>
+              <p>Select one or more text-based PDFs.</p>
               <input id="pdf-files" type="file" accept=".pdf,application/pdf" multiple hidden />
               <button id="select-pdfs" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5"/></svg><span>Select PDFs</span></button>
             </div>
@@ -271,43 +270,18 @@
               <div><span id="pdf-progress-label" role="status" aria-live="polite">Reading your PDF…</span><button id="stop-pdfs" class="text-button" type="button">Stop</button></div>
               <progress id="pdf-progress" max="100" value="0" aria-label="PDF extraction progress"></progress>
             </div>
-            <div class="destination">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v9a3 3 0 0 0 3 3h11m-4-4 4 4-4 4"/></svg>
-              <div><span class="field-label">EXCEL OUTPUT</span><p id="pdf-output-name" class="output-filename">Your file_extracted.xlsx</p></div>
-            </div>
-            <div class="pdf-source-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></svg><p>Supports text-based PDFs only</p></div>
           </section>
-
-          <aside class="rules-panel" aria-labelledby="pdf-rules-heading">
-            <p class="eyebrow">INSIDE YOUR WORKBOOK</p>
-            <h2 id="pdf-rules-heading">One row per purchase order.</h2>
-            <dl class="workbook-fields">
-              <div><dt>Document details</dt><dd>Partner, order type, PO, vendor and store. Leading zeros stay intact.</dd></div>
-              <div><dt>Amount</dt><dd>Full purchase order total</dd></div>
-              <div><dt>Date Processed</dt><dd>Date you select the PDF</dd></div>
-              <div><dt>Date Ack</dt><dd>Date beneath the PO number</dd></div>
-              <div><dt>User Defined Field #1</dt><dd>SKU list</dd></div>
-              <div><dt>User Defined Field #2</dt><dd>UPC list</dd></div>
-              <div><dt>User Defined Field #3</dt><dd>Requested ship date</dd></div>
-            </dl>
-            <div class="naming-notes">
-              <p>Business System Code is 211.</p>
-              <p>Currency Code stays blank. Integration Status is 0.</p>
-            </div>
-          </aside>
         </div>
 
         <section id="pdf-preview" class="preview-panel" aria-labelledby="pdf-preview-heading" hidden>
           <div class="panel-heading preview-heading">
             <h2 id="pdf-preview-heading"><span class="step">02</span>Review your purchase orders</h2>
-            <div class="preview-file"><label for="pdf-preview-file" class="sr-only">PDF to preview</label><select id="pdf-preview-file" class="select-field"></select></div>
+            <div id="pdf-preview-file-control" class="preview-file" hidden><label for="pdf-preview-file" class="sr-only">PDF to preview</label><select id="pdf-preview-file" class="select-field"></select></div>
           </div>
-          <div id="pdf-stats" class="stats"></div>
-          <details id="pdf-warnings" class="warnings" hidden><summary id="pdf-warnings-summary">Items to review</summary><ul id="pdf-warnings-list"></ul></details>
-          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order preview, scroll horizontally to see all 14 columns"><table class="pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
+          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 7 columns"><table class="pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
           <div class="table-footer"><span id="pdf-page-label" class="muted small"></span><div id="pdf-pagination" class="pagination"><button id="pdf-previous-page" class="text-button" type="button">Previous</button><button id="pdf-next-page" class="text-button" type="button">Next</button></div></div>
           <div class="action-bar">
-            <div><h3 id="pdf-action-title">Ready.</h3></div>
+            <div><p id="pdf-action-title" class="muted small" role="status" aria-live="polite"></p></div>
             <div class="download-actions"><button id="download-pdf-zip" class="button secondary" type="button" hidden>Download all (ZIP)</button><button id="download-excel" class="button primary" type="button">Download Excel<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button></div>
           </div>
         </section>

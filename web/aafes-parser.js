@@ -1,20 +1,13 @@
 // Browser port of JYS-Enterprise-Inc/AAfes_Pdf_to_Excel at 56ef7bc.
 // Coordinates are PDF points, measured from the top-left of the page.
 export const COLUMNS = [
-  ["trading_partner", "Trading Partner", "text"],
-  ["document_type", "Document Type", "text"],
-  ["po", "Document Num", "text"],
-  ["alt_document", "Alt Document", "text"],
-  ["store", "Store Num", "text"],
-  ["currency_code", "Currency Code", "text"],
-  ["order_total", "Amount", "money"],
-  ["date_processed", "Date Processed", "date"],
-  ["date_ack", "Date Ack", "date"],
-  ["business_system_code", "Business System Code", "number"],
-  ["integration_status", "Integration Status", "number"],
-  ["sku", "User Defined Field #1", "text"],
-  ["upc", "User Defined Field #2", "text"],
-  ["requested_ship", "User Defined Field #3", "date-short"],
+  ["po", "PO", "text"],
+  ["vendor_style", "Vendor's Style", "text"],
+  ["qty", "Qty", "number"],
+  ["price", "Unit Price", "money"],
+  ["total_price", "Total Price", "money"],
+  ["requested_ship", "Requested Ship Date", "date"],
+  ["requested_del", "Requested Delivery Date", "date"],
 ];
 
 const HEADERS = ["Line", "UPC", "SKU", "Description", "Qty", "UOM", "Price", "Amount"];
@@ -28,11 +21,14 @@ export function exceedsExcelCellLimits(value) {
   return text.length > MAX_EXCEL_CELL_TEXT || (text.match(/\n/g)?.length ?? 0) > MAX_EXCEL_CELL_LINE_BREAKS;
 }
 
-// Line extraction stays separate from the one-row-per-PO output. Keeping both
-// lists in source-line order preserves SKU/UPC pairing, including missing values.
+// Order summaries support counts and reconciliation. Preview and export use the
+// individual records so every item's style, quantity, and price stay together.
 export function groupOrders(records) {
   const groups = new Map(), warnings = [];
-  const orderFields = COLUMNS.filter(([key]) => key !== "sku" && key !== "upc");
+  const orderFields = [
+    ["store", "Store Num"], ["order_total", "Printed PO Total"],
+    ["requested_ship", "Requested Ship Date"], ["requested_del", "Requested Delivery Date"],
+  ];
   for (const row of records) {
     let order = groups.get(row.po);
     if (!order) {
@@ -54,10 +50,8 @@ export function groupOrders(records) {
         ? order.line_items.map((row) => row[key] || "").join("\n") : "";
     }
     if (order.conflicting_fields.size)
-      warnings.push(`PO ${order.po}: conflicting ${[...order.conflicting_fields].join(", ")} values across line items. The first nonblank value was kept in the order row.`);
+      warnings.push(`PO ${order.po}: conflicting ${[...order.conflicting_fields].join(", ")} values across line items. Check the source PDF; each item keeps its own values.`);
     delete order.conflicting_fields;
-    if ([order.sku, order.upc].some(exceedsExcelCellLimits))
-      warnings.push(`PO ${order.po}: the SKU/UPC lists exceed Excel's cell limit. Complete pairs will be included on an additional Order Items sheet.`);
   }
   return { orders: [...groups.values()], warnings };
 }
@@ -218,10 +212,31 @@ function vendorStyle(rows, index) {
   return "";
 }
 
+function lineTotal(qty, price) {
+  // Multiply decimal coefficients before rounding to cents. Binary floating
+  // point can otherwise turn 3 × 9.995 into 29.984999... and round a cent low.
+  const decimal = (value) => {
+    const [digits, exponent = "0"] = String(value).split("e");
+    return [BigInt(digits.replace(".", "")), Number(exponent) - (digits.split(".")[1]?.length ?? 0)];
+  };
+  const [quantity, quantityExponent] = decimal(qty);
+  const [unitPrice, priceExponent] = decimal(price);
+  const product = quantity * unitPrice;
+  const exponent = quantityExponent + priceExponent + 2;
+  let cents;
+  if (exponent >= 0) cents = product * 10n ** BigInt(exponent);
+  else {
+    const divisor = 10n ** BigInt(-exponent);
+    const sign = product < 0n ? -1n : 1n;
+    cents = sign * ((product * sign + divisor / 2n) / divisor);
+  }
+  return Number(`${cents}e-2`);
+}
+
 export function addOrderTotals(records) {
   const totals = new Map();
   for (const row of records) {
-    totals.set(row.po, (totals.get(row.po) ?? 0) + row.amount);
+    totals.set(row.po, (totals.get(row.po) ?? 0) + (Number.isFinite(row.amount) ? row.amount : row.total_price));
   }
   for (const row of records) row.order_total = Number(totals.get(row.po).toFixed(2));
 }
@@ -268,7 +283,7 @@ export function createExtractor({ processedDate = localDate() } = {}) {
       const printedTotal = printedOrderTotal(words, bounds);
       if (order && printedTotal.value !== null) {
         if (printedTotal.extraValues)
-          warn(pageNumber, `PO ${currentPO}: extra numeric values below the printed total were ignored. Amount uses the first standalone total after Package Description; check the source PDF.`);
+          warn(pageNumber, `PO ${currentPO}: extra numeric values below the printed total were ignored. Check the source PDF.`);
         if (order.printed_total !== undefined && order.printed_total !== printedTotal.value)
           warn(pageNumber, `PO ${currentPO} has conflicting printed totals. The first total was kept.`);
         else order.printed_total = printedTotal.value;
@@ -280,24 +295,24 @@ export function createExtractor({ processedDate = localDate() } = {}) {
       const rows = groupRows(words, bounds, band ? band[0].top : 0);
       for (const [index, cells] of rows.entries()) {
         if (!LINE_NUMBER.test(cells.Line ?? "")) continue;
-        const qty = toNumber(cells.Qty), amount = toNumber(cells.Amount);
-        if (!Number.isFinite(qty) || !Number.isFinite(amount)) {
-          warn(pageNumber, `Line ${cells.Line} has an unreadable quantity or amount and was skipped.`);
+        const qty = toNumber(cells.Qty), price = toNumber(cells.Price ?? ""), amount = toNumber(cells.Amount ?? "");
+        if (!Number.isFinite(qty) || !Number.isFinite(price) || !Number.isFinite(qty * price)) {
+          warn(pageNumber, `Line ${cells.Line} has an unreadable quantity or unit price and was skipped.`);
           continue;
         }
         if (!currentPO) { warn(pageNumber, `Line ${cells.Line} has no identifiable PO number and was skipped.`); continue; }
         const row = {
           po: currentPO, line_no: cells.Line, upc: cells.UPC ?? "", sku: cells.SKU ?? "",
           vendor_style: vendorStyle(rows, index), description: cells.Description ?? "",
-          qty, uom: cells.UOM ?? "", price: toNumber(cells.Price ?? ""),
-          amount, requested_ship: ship, requested_del: delivery,
+          qty, uom: cells.UOM ?? "", price, total_price: lineTotal(qty, price),
+          amount: Number.isFinite(amount) ? amount : null, requested_ship: ship, requested_del: delivery,
           store, source_page: pageNumber,
         };
         const key = `${currentPO}:${row.line_no}`;
         if (seen.has(key)) {
           duplicateCount++;
           const first = seen.get(key);
-          if (["sku", "upc", "qty", "amount", "vendor_style"].some((field) => first[field] !== row[field]))
+          if (["sku", "upc", "qty", "price", "amount", "vendor_style", "requested_ship", "requested_del"].some((field) => first[field] !== row[field]))
             warn(pageNumber, `PO ${currentPO}, line ${row.line_no} differs from an earlier copy. The first value was kept.`);
           continue;
         }
@@ -319,9 +334,7 @@ export function createExtractor({ processedDate = localDate() } = {}) {
         if (!lines?.length) continue;
         const calculated = lines[0].order_total;
         if (order.printed_total !== undefined && Math.abs(order.printed_total - calculated) > 0.005)
-          warnings.push(`PO ${po}: printed total ${order.printed_total.toFixed(2)} differs from the extracted line-item sum ${calculated.toFixed(2)}. Amount uses the printed total; check for missing lines or adjustments.`);
-        if (order.printed_total === undefined)
-          warnings.push(`PO ${po}: no printed total was found. Amount was calculated from the extracted line items.`);
+          warnings.push(`PO ${po}: printed total ${order.printed_total.toFixed(2)} differs from the extracted line-item sum ${calculated.toFixed(2)}. Check for missing lines or adjustments. Total Price is calculated as Unit Price × Qty for each item.`);
         for (const row of lines) {
           Object.assign(row, {
             trading_partner: order.trading_partner || "",
@@ -336,17 +349,14 @@ export function createExtractor({ processedDate = localDate() } = {}) {
           });
         }
         const required = [
-          ["trading_partner", "Trading Partner"], ["document_type", "Document Type"],
-          ["alt_document", "Vendor #"], ["store", "Store Num"],
-          ["date_ack", "Date Ack"], ["requested_ship", "Requested Ship"],
+          ["vendor_style", "Vendor's Style"],
+          ["requested_ship", "Requested Ship Date"], ["requested_del", "Requested Delivery Date"],
         ];
         const missing = required.filter(([key]) => lines.some((row) => !row[key])).map(([, label]) => label);
         if (missing.length) warnings.push(`PO ${po}: missing ${missing.join(", ")} on one or more source lines. Check the source PDF.`);
       }
       if (emptyPages) warnings.push(`${emptyPages} page(s) had no readable text. Check for scanned pages or blank separators.`);
       if (duplicateCount) warnings.push(`${duplicateCount} repeated PO line(s) were omitted. Each PO and line number is included once.`);
-      const missing = records.filter((row) => !row.sku || !row.upc);
-      if (missing.length) warnings.push(`${missing.length} line item(s) have a missing SKU or UPC. User Defined Fields #1 and #2 are left blank where missing; check the source PDF.`);
       const grouped = groupOrders(records);
       return { records, orders: grouped.orders, warnings: [...warnings, ...grouped.warnings], orderCount: grouped.orders.length };
     },
