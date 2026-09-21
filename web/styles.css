@@ -232,29 +232,6 @@ h2 {
   font-size: 12px;
   color: #74757d;
 }
-.destination {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 17px var(--panel-gutter);
-  border-top: 1px solid var(--border);
-  background: #fafafb;
-}
-.destination > svg {
-  color: #8b8995;
-}
-.field-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.1px;
-  color: var(--muted);
-}
-#output-path {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
-  margin-top: 3px;
-  overflow-wrap: anywhere;
-}
 .options {
   border-top: 1px solid var(--border);
   font-size: 14px;
@@ -322,11 +299,6 @@ h2 {
   container-type: inline-size;
   min-width: 0;
 }
-.rules-panel h2 {
-  font-size: 23px;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-}
 .example-columns,
 .naming-example {
   display: grid;
@@ -335,7 +307,6 @@ h2 {
   gap: 10px;
 }
 .example-columns {
-  margin-top: 26px;
   padding-bottom: 12px;
   font-size: 12px;
   color: var(--muted);
@@ -349,6 +320,9 @@ h2 {
 .naming-example {
   padding: 17px 0;
   border-bottom: 1px solid #eeedf0;
+}
+.naming-example:last-child {
+  border-bottom: 0;
 }
 .naming-example code {
   font-size: 13px;
@@ -371,20 +345,6 @@ h2 {
   font-size: 16px;
   text-align: center;
 }
-.naming-notes {
-  margin-top: 20px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.naming-notes p + p {
-  margin-top: 7px;
-}
-.naming-notes code {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -398,9 +358,6 @@ h2 {
 @container (max-width: 350px) {
   .example-columns {
     display: none;
-  }
-  .naming-examples {
-    margin-top: 23px;
   }
   .naming-example {
     grid-template-columns: 16px minmax(0, 1fr);
@@ -822,9 +779,6 @@ select:focus-visible {
 .pdf-picker.drag-over {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 2px var(--accent);
-}
-.destination > div {
-  min-width: 0;
 }
 .pdf-queue {
   padding: 0 var(--panel-gutter);

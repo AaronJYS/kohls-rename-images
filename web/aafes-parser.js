@@ -8,8 +8,6 @@ export const COLUMNS = [
   ["price", "Unit Price", "money"],
   ["po_total_qty", "Total Qty for same PO", "number"],
   ["po_total_price", "Total Price for same PO", "money"],
-  ["sku_total_qty", "Total Qty for same SKU", "number"],
-  ["sku_total_price", "Total Price for same SKU", "money"],
   ["requested_ship", "Requested Ship Date", "date"],
   ["requested_del", "Requested Delivery Date", "date"],
 ];

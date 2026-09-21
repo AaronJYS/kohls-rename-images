@@ -1,5 +1,5 @@
 import { buildPlan, parseColorCSV } from "./renamer.js";
-import { scanFolder, nextOutputName, exportPlan } from "./folder-io.js";
+import { scanFolder, exportPlan } from "./folder-io.js";
 
 const $ = (id) => document.getElementById(id);
 const supported =
@@ -35,7 +35,6 @@ function refreshAction() {
   $("create-folder").disabled =
     busy ||
     !plan ||
-    completed ||
     blocked ||
     (!plan.files.length && !plan.directories.length);
   if (completed || copying) return;
@@ -44,7 +43,7 @@ function refreshAction() {
     ? "Resolve the unrecognized colors first."
     : plan && !plan.files.length && !plan.directories.length
       ? "This folder is empty."
-      : "Ready.";
+      : "";
   $("action-description").textContent = blocked
     ? "Add a color CSV, or turn off the color requirement in Naming options."
     : "";
@@ -154,8 +153,6 @@ $("select-folder").addEventListener("click", async () => {
           `Reading the folder… ${count} items found`;
       },
     });
-    $("output-path").textContent =
-      `${handle.name} / ${await nextOutputName(handle)}`;
     renderPlan();
     $("folder-description").textContent =
       `${plan.files.length} ${plan.files.length === 1 ? "file" : "files"}.`;
@@ -180,7 +177,6 @@ $("select-folder").addEventListener("click", async () => {
       $("folder-description").textContent =
         "Subfolders and other files come along, too.";
       $("source-status").textContent = "Select a folder";
-      $("output-path").textContent = "Your folder / Your folder_Kohl";
     }
     if (error.name !== "AbortError") message(explainError(error), "error");
   } finally {
@@ -220,7 +216,10 @@ $("reset-colors").addEventListener("click", () => {
   if (snapshot) renderPlan();
   message("");
 });
-$("strict-colors").addEventListener("change", refreshAction);
+$("strict-colors").addEventListener("change", () => {
+  completed = false;
+  refreshAction();
+});
 $("previous-page").addEventListener("click", () => {
   page--;
   renderTable();
@@ -239,11 +238,11 @@ $("create-folder").addEventListener("click", async () => {
     busy ||
     !source ||
     !plan ||
-    completed ||
     ($("strict-colors").checked && plan.unknownColors.length)
   )
     return;
   const permission = source.requestPermission({ mode: "readwrite" });
+  completed = false;
   copying = true;
   setBusy(true);
   message("");
@@ -260,8 +259,8 @@ $("create-folder").addEventListener("click", async () => {
       exportPlan(source, plan, {
         signal: abortController.signal,
       });
-    const result = navigator.locks
-      ? await navigator.locks.request(
+    await (navigator.locks
+      ? navigator.locks.request(
           "kohls-image-export",
           { ifAvailable: true },
           (lock) => {
@@ -272,9 +271,8 @@ $("create-folder").addEventListener("click", async () => {
             return run();
           },
         )
-      : await run();
+      : run());
     completed = true;
-    $("output-path").textContent = `${source.name} / ${result.outputName}`;
     $("source-status").textContent = "";
     $("action-title").textContent = "Check original folder.";
     $("action-description").textContent = "";

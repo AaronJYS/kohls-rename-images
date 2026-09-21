@@ -35,8 +35,8 @@ individually and do not prevent the remaining files from being processed.
 The interface shows file selection, the item preview, and download controls.
 The file switcher appears when multiple converted PDFs are available.
 
-Each `<source>_extracted.xlsx` contains a **Purchase Orders** sheet with one row
-per line item and these columns, in order:
+Each `<source>_extracted.xlsx` contains two sheets. **Purchase Orders** has one row
+per line item and these columns, in order, matching the preview:
 
 | Column | Source / value | Excel type |
 | --- | --- | --- |
@@ -47,21 +47,29 @@ per line item and these columns, in order:
 | Unit Price | Value in the item's Price column | Number, two decimal places |
 | Total Qty for same PO | Sum of Qty for all items with this PO in the PDF | Number |
 | Total Price for same PO | Sum of item prices (Unit Price × Qty) for this PO in the PDF | Number, two decimal places |
-| Total Qty for same SKU | Sum of Qty for all items with this SKU across POs in the PDF | Number |
-| Total Price for same SKU | Sum of item prices (Unit Price × Qty) for this SKU across POs in the PDF | Number, two decimal places |
 | Requested Ship Date | Date under Requested Ship | Date (`yyyy/mm/dd`) |
 | Requested Delivery Date | Date under Requested Delivery | Date (`yyyy/mm/dd`) |
 
-The header is frozen, filters are enabled, and column widths fit the data.
+**SKU QTY Summed** has one row per unique, nonblank SKU, in first-seen order:
+
+| Column | Source / value | Excel type |
+| --- | --- | --- |
+| SKU | Item SKU, with leading zeros preserved | Text |
+| Total Qty | Sum of Qty for all items with this SKU across POs in the PDF | Number |
+| Total Price | Sum of item prices (Unit Price × Qty) for this SKU across POs in the PDF | Number, two decimal places |
+
+Both sheets have frozen headers, filters, and column widths that fit the data.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom
 borders, and regular headers. Date and number formats are preserved.
 PO, style, and SKU identifiers preserve leading zeros. Multiple items from the same
-PO remain separate rows, in source order. The four grouped totals repeat on each
-matching item row and are calculated separately for each PDF. Price totals sum
+PO remain separate rows, in source order. PO totals repeat on each matching item
+row; SKU totals appear once in the summary. All totals are calculated separately
+for each PDF. Price totals sum
 each item's unit price times quantity, rounded to cents per item; printed line
 amounts and full PO totals do not replace these calculations. Duplicate PO/line
-pairs are counted once. Missing SKUs have blank SKU totals. Group totals are
-repeated values and should not be summed again down the sheet.
+pairs are counted once. Items missing a SKU remain in Purchase Orders and are
+excluded from the SKU summary. Repeated PO totals should not be summed again
+down the detail sheet.
 Workbooks are downloaded through the browser; source
 PDFs are not changed. Duplicate output names inside ZIPs receive `_2`, `_3`, etc.
 
@@ -71,8 +79,8 @@ commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. It locates the PO number in t
 top-right header, detects table columns from their positions, groups words into
 rows with a 2.5-point tolerance, follows continuation pages, reads vendor styles
 and requested dates, removes repeated `(PO, line number)` pairs, and totals
-amounts within each PDF. The eleven-column export includes one row per unique PO
-line, with one workbook per PDF. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
+amounts within each PDF. Each workbook contains nine detail columns and a
+three-column SKU summary. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
 for layout anchors and derivations.
 
 Browser adaptations:
@@ -154,9 +162,6 @@ npm test
 - `tests/aafes.test.mjs` — AAFES parser regressions, original-script fixture
   parity, input validation, and independent ZIP/XML checks of Excel output.
   All PDF fixtures are synthetic. See `tests/fixtures/README.md` for provenance.
-- `tests/aafes-stress.test.mjs` — regressions for numeric footers, accounting
-  negatives, currency symbols, comma decimals, missing-total fallback, and
-  malformed numeric values identified during stress testing.
 
 The snapshot and complete rename plan are prepared before an output directory is
 created, preventing recursive self-copying. Large files are streamed; only file

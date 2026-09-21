@@ -8,6 +8,11 @@ const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 const NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const SKU_COLUMNS = [
+  ["sku", "SKU", "text"],
+  ["sku_total_qty", "Total Qty", "number"],
+  ["sku_total_price", "Total Price", "money"],
+];
 
 function escapeXML(value) {
   return String(value).replace(/_x([\da-f]{4})_/gi, "_x005F_x$1_")
@@ -65,7 +70,16 @@ export function workbookParts(records) {
   if (!records.length) throw new Error("There are no extracted purchase orders to export.");
   if (records.length > 100000)
     throw new Error("Export is limited to 100,000 source line items per PDF.");
-  const sheets = [{ name: "Purchase Orders", rows: records, columns: COLUMNS }];
+  // Extraction already totals SKUs across this PDF's POs. Export each total
+  // once, in first-seen order, without grouping items whose SKU is missing.
+  const skuRows = new Map();
+  for (const row of records) {
+    if (row.sku && !skuRows.has(row.sku)) skuRows.set(row.sku, row);
+  }
+  const sheets = [
+    { name: "Purchase Orders", rows: records, columns: COLUMNS },
+    { name: "SKU QTY Summed", rows: [...skuRows.values()], columns: SKU_COLUMNS },
+  ];
   const parts = {
     "[Content_Types].xml": `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`,
     "_rels/.rels": `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`,

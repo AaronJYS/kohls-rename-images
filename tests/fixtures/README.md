@@ -26,7 +26,7 @@ Expected output must be independently rechecked against the original Python
 converter when changing the fixture. The browser acceptance check selects the
 actual PDFs, compares the preview with the expected data, and exercises Excel
 and ZIP downloads, partial batch failures, navigation, and responsive layout.
-The eleven-column expectations, printed-total reconciliation, one-row-per-item
-output, PO/SKU totals, requested dates, and Excel cell limits are asserted
+The two-sheet layout, printed-total reconciliation, one-row-per-item output,
+unique SKU summaries, per-file PO/SKU totals, and requested dates are asserted
 separately in `aafes.test.mjs`; the original expected JSON preserves raw line
 extraction parity for the source converter's fields.

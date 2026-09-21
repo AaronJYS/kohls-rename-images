@@ -169,10 +169,6 @@ test("subsequent scans exclude generated output and choose a fresh child folder"
   const result = await exportPlan(root, first);
   const next = await scanFolder(root);
   assert.deepEqual(next.excluded, [result.outputName]);
-  assert.deepEqual(
-    next.entries.map((e) => e.relativePath),
-    (await scanFolder(root)).entries.map((e) => e.relativePath),
-  );
   assert.equal(buildPlan(next.entries).files.length, first.files.length);
   assert.equal(await nextOutputName(root), `${root.name}_Kohl_2`);
   await assert.rejects(

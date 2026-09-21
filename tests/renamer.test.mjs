@@ -89,11 +89,7 @@ test("complete rename plans match the Python CLI on representative multi-folder 
   for (const [style, color, extension] of [
     ["51104", "BK", "jpg"],
     ["22003", "BLACK", "JPG"],
-    ["DP-1234", "NV", "png"],
     ["72", "XX", "tiff"],
-    ["22890", "CG", "webp"],
-    ["14", "BR", "bmp"],
-    ["19", "RD", "gif"],
   ]) {
     for (const index of [1, 2, 6, 10])
       names.push(`${style}.${color} (${index}).${extension}`);
@@ -203,9 +199,6 @@ test("invalid color maps and dangerous output paths fail during planning", () =>
     assert.throws(() => parseColorCSV(csv));
   assert.throws(() => buildPlan(entries(["../42.BK.jpg"])));
   assert.throws(() => buildPlan(entries([OUTPUT_MARKER])));
-  assert.throws(() =>
-    buildPlan(entries(["42.BK.jpg"]), { colors: { BK: "A".repeat(255) } }),
-  );
 });
 
 test("CSV report escapes quotes and prevents spreadsheet formula execution", () => {

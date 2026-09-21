@@ -86,15 +86,6 @@
               ><span>Select folder</span>
             </button>
           </div>
-          <div class="destination">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 4v9a3 3 0 0 0 3 3h11m-4-4 4 4-4 4" />
-            </svg>
-            <div>
-              <span class="field-label">OUTPUT LOCATION</span>
-              <p id="output-path">Your folder / Your folder_Kohl</p>
-            </div>
-          </div>
           <details class="options">
             <summary>Naming options</summary>
             <div class="options-content">
@@ -127,9 +118,7 @@
           </details>
         </section>
 
-        <aside class="rules-panel" aria-labelledby="rules-heading">
-          <p class="eyebrow">THE NAMING RULES</p>
-          <h2 id="rules-heading">One consistent format.</h2>
+        <aside class="rules-panel" aria-label="Filename renaming examples">
           <div class="example-columns" aria-hidden="true">
             <span>Original filename</span><span></span
             ><span>Renamed filename</span>
@@ -176,10 +165,6 @@
               >
             </li>
           </ul>
-          <div class="naming-notes">
-            <p><code>GENAI</code> is added for filenames marked as AI.</p>
-            <p>File formats stay the same. Other files keep their names.</p>
-          </div>
         </aside>
       </div>
 
@@ -221,7 +206,7 @@
         </div>
         <div class="action-bar">
           <div>
-            <h3 id="action-title">Ready.</h3>
+            <p id="action-title" class="muted small" role="status" aria-live="polite"></p>
             <p id="action-description" hidden></p>
           </div>
           <div class="download-actions">
@@ -278,7 +263,7 @@
             <h2 id="pdf-preview-heading"><span class="step">02</span>Review your purchase orders</h2>
             <div id="pdf-preview-file-control" class="preview-file" hidden><label for="pdf-preview-file" class="sr-only">PDF to preview</label><select id="pdf-preview-file" class="select-field"></select></div>
           </div>
-          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 11 columns"><table class="pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
+          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 9 columns"><table class="pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
           <div class="table-footer"><span id="pdf-page-label" class="muted small"></span><div id="pdf-pagination" class="pagination"><button id="pdf-previous-page" class="text-button" type="button">Previous</button><button id="pdf-next-page" class="text-button" type="button">Next</button></div></div>
           <div class="action-bar">
             <div><p id="pdf-action-title" class="muted small" role="status" aria-live="polite"></p></div>
