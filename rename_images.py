@@ -84,7 +84,7 @@ GENAI_FILES = {
 
 # Fallback auto-detection: if these substrings appear in the ORIGINAL filename,
 # the role/flag is applied automatically. Set to () to disable.
-DIMS_KEYWORDS = ("dim", "dimension", "measure", "ruler", "scale")
+DIMS_KEYWORDS = ("dim", "measure", "ruler", "scale")
 GENAI_KEYWORDS = ("genai", "gen-ai", "gen_ai", "aimodel", "ai-model")
 
 # ---------------------------------------------------------------------------
@@ -228,7 +228,6 @@ def assign_roles(files, notes=None, label=""):
 
         if main is not None:
             roles[main] = "MAIN"
-            taken.add("MAIN")
 
     # Pass 4 — everything else in index order: ALT, ALT2, ALT3, ...
     alt_n = 1

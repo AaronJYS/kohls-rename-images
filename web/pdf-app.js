@@ -15,16 +15,6 @@ function message(text, type = "") {
 const readyFiles = () => files.filter((file) => file.result);
 const currentFile = () => files.find((file) => file.id === selectedId && file.result);
 
-function controls() {
-  $("select-pdfs").disabled = busy || exporting;
-  $("download-excel").disabled = busy || exporting || !currentFile();
-  $("download-pdf-zip").disabled = busy || exporting;
-  $("download-pdf-zip").hidden = readyFiles().length < 2;
-  $("pdf-preview-file").disabled = exporting;
-  $("select-pdfs").querySelector("span").textContent = files.length ? "Add PDFs" : "Select PDFs";
-  $("pdf-drop-zone").setAttribute("aria-busy", String(busy));
-}
-
 function renderFiles() {
   $("pdf-queue").hidden = !files.length;
   $("pdf-file-list").replaceChildren(...files.map((file) => {
@@ -87,7 +77,13 @@ function render() {
   const ready = readyFiles();
   if (!currentFile()) { selectedId = ready[0]?.id ?? null; page = 0; }
   renderFiles();
-  controls();
+  $("select-pdfs").disabled = busy || exporting;
+  $("download-excel").disabled = busy || exporting || !currentFile();
+  $("download-pdf-zip").disabled = busy || exporting;
+  $("download-pdf-zip").hidden = ready.length < 2;
+  $("pdf-preview-file").disabled = exporting;
+  $("select-pdfs").querySelector("span").textContent = files.length ? "Add PDFs" : "Select PDFs";
+  $("pdf-drop-zone").setAttribute("aria-busy", String(busy));
   $("pdf-preview").hidden = !ready.length;
   $("pdf-preview-file-control").hidden = ready.length < 2;
   $("pdf-preview-file").replaceChildren(...ready.map((file) => {
@@ -185,7 +181,7 @@ dropZone.addEventListener("dragover", (event) => { event.preventDefault(); event
 dropZone.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; dropZone.classList.remove("drag-over"); } });
 dropZone.addEventListener("drop", (event) => {
   event.preventDefault(); dragDepth = 0; dropZone.classList.remove("drag-over");
-  void addFiles([...event.dataTransfer.files]);
+  void addFiles(event.dataTransfer.files);
 });
 // Dropping outside the target must not navigate away from an in-progress copy.
 window.addEventListener("dragover", (event) => { if (event.dataTransfer.types.includes("Files")) event.preventDefault(); });

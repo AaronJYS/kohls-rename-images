@@ -64,6 +64,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 summary:focus-visible,
+select:focus-visible,
 [tabindex]:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 4px;
@@ -156,7 +157,6 @@ h2 {
 }
 .step {
   font-size: 12px;
-  font-weight: 650;
   color: var(--accent);
   background: var(--accent-soft);
   border-radius: 5px;
@@ -329,7 +329,6 @@ h2 {
 }
 .example-arrow {
   color: #8b8995;
-  font-size: 16px;
   text-align: center;
 }
 .sr-only {
@@ -702,7 +701,6 @@ body[data-tool="pdf"] {
   outline-offset: -5px;
 }
 select:focus-visible {
-  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 #pdf-tool .workspace {

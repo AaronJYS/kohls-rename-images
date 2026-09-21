@@ -188,19 +188,17 @@ $("color-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   setBusy(true);
-  const previousColors = colors;
   try {
     if (file.size > 1024 * 1024)
       throw new Error("Choose a color CSV smaller than 1 MB.");
     const parsed = parseColorCSV(await file.text());
     if (snapshot) renderPlan(parsed);
-    colors = parsed;
     $("color-status").textContent =
-      `${file.name} · ${Object.keys(colors).length} custom color entries`;
+      `${file.name} · ${Object.keys(parsed).length} custom color entries`;
     $("reset-colors").hidden = false;
     message("");
+    colors = parsed;
   } catch (error) {
-    colors = previousColors;
     message(explainError(error), "error");
     event.target.value = "";
   } finally {
@@ -272,10 +270,7 @@ $("create-folder").addEventListener("click", async () => {
         )
       : run());
     completed = true;
-    $("source-status").textContent = "";
     $("action-title").textContent = "Check original folder.";
-    $("action-description").textContent = "";
-    $("action-description").hidden = true;
   } catch (error) {
     const stopped = error.name === "AbortError";
     const partial = error.outputName

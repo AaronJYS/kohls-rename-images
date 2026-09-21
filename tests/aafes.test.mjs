@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { extractPages, toDate, toNumber, localDate, addOrderTotals, addGroupedTotals } from "../web/aafes-parser.js";
-import { textItemsToWords, validatePDF, MAX_PDF_BYTES } from "../web/pdf-reader.js";
-import { createWorkbook, createWorkbookArchive, excelDate, outputName } from "../web/excel-export.js";
+import { textItemsToWords, validatePDF, MAX_PDF_BYTES, outputName } from "../web/pdf-reader.js";
+import { createWorkbook, createWorkbookArchive, excelDate } from "../web/excel-export.js";
 
 const fixtures = JSON.parse(await readFile(new URL("./fixtures/aafes-words.json", import.meta.url), "utf8"));
 const copy = () => structuredClone(fixtures);

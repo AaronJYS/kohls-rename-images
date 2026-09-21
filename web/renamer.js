@@ -25,7 +25,7 @@ export const COLOR_MAP = Object.freeze({
 export const DEFAULTS = Object.freeze({
   roleOverrides: {},
   genaiFiles: [],
-  dimsKeywords: ["dim", "dimension", "measure", "ruler", "scale"],
+  dimsKeywords: ["dim", "measure", "ruler", "scale"],
   genaiKeywords: ["genai", "gen-ai", "gen_ai", "aimodel", "ai-model"],
   numberFirstAlt: false,
   mainIndex: 1,
@@ -130,7 +130,6 @@ function assignRoles(files, config, notes, label) {
     }
     if (main) {
       roles.set(main, "MAIN");
-      taken.add("MAIN");
     }
   }
   let alt = 1;
@@ -199,7 +198,7 @@ export function buildPlan(entries, options = {}) {
     }
     const key = pathKey(entry.relativePath);
     occupied.set(key, (occupied.get(key) || 0) + 1);
-    if (key === pathKey(OUTPUT_MARKER))
+    if (key === OUTPUT_MARKER)
       throw new Error(
         `This folder contains the reserved file ${OUTPUT_MARKER}. Select the original source folder.`,
       );

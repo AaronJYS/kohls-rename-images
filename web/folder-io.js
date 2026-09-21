@@ -1,7 +1,6 @@
 import {
   APP_ID,
   OUTPUT_MARKER,
-  compare,
   pathKey,
   renameLog,
   validateName,
@@ -43,13 +42,7 @@ export async function scanFolder(root, { onProgress = () => {}, signal } = {}) {
   while (stack.length) {
     checkAbort(signal);
     const { handle, path } = stack.pop();
-    const children = [];
     for await (const child of handle.values()) {
-      checkAbort(signal);
-      children.push(child);
-    }
-    children.sort((a, b) => compare(a.name, b.name));
-    for (const child of children) {
       checkAbort(signal);
       const relativePath = path ? `${path}/${child.name}` : child.name;
       if (child.kind === "directory") {

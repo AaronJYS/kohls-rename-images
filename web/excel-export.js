@@ -2,8 +2,6 @@ import { COLUMNS, exceedsExcelCellLimits } from "./aafes-parser.js";
 import { outputName } from "./pdf-reader.js";
 import "./vendor/jszip/jszip.min.js";
 
-export { outputName };
-
 const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 const NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -41,7 +39,7 @@ function worksheetXML(records, columns) {
     for (const row of records.slice(0, 1000)) {
       for (const line of String(row[key] ?? "").split("\n")) width = Math.max(width, Math.min(45, line.length + 3));
     }
-    return Math.min(45, width);
+    return width;
   });
   const header = `<row r="1">${columns.map(([, label], i) => textCell(`${columnName(i)}1`, label, 0)).join("")}</row>`;
   const rows = records.map((row, index) => {
