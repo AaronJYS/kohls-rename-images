@@ -164,7 +164,7 @@ def parse(path):
         m.group("style").upper(),
         color_raw.upper(),
         int(idx) if idx else 0,
-        path.stem[m.start("style") : m.end("style")],
+        m.group("style"),
         color_raw,
     )
 
@@ -238,7 +238,7 @@ def assign_roles(files, notes=None, label=""):
         while alt_label(alt_n) in taken:
             alt_n += 1
         roles[path] = alt_label(alt_n)
-        taken.add(alt_label(alt_n))
+        taken.add(roles[path])
         alt_n += 1
 
     return roles

@@ -37,9 +37,7 @@ class DiskFile {
       write(chunk) {
         if (file.name === file.faults.failWrite)
           throw new DOMException("Disk full", "QuotaExceededError");
-        chunks.push(
-          typeof chunk === "string" ? Buffer.from(chunk) : Buffer.from(chunk),
-        );
+        chunks.push(Buffer.from(chunk));
       },
       async close() {
         await writeFile(file.path, Buffer.concat(chunks));

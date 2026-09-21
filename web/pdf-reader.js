@@ -42,7 +42,7 @@ export function textItemsToWords(content, viewport, util, measure) {
         word.x0 - previous.x1 >= -0.2 && word.x0 - previous.x1 < 0.6) {
       previous.text += word.text;
       previous.x1 = word.x1;
-    } else merged.push({ ...word });
+    } else merged.push(word);
   }
   return merged;
 }

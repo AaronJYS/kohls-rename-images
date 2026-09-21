@@ -23,7 +23,8 @@ body {
   margin: 0;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button,
@@ -117,15 +118,6 @@ h1 {
 .intro {
   margin-top: 12px;
   color: var(--muted);
-}
-.local-badge {
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #5b6065;
-  font-size: 13px;
-  padding-bottom: 2px;
 }
 .workspace {
   display: grid;
@@ -228,10 +220,6 @@ h2 {
   margin: 21px 0 8px;
   min-width: 169px;
 }
-.folder-picker .picker-note {
-  font-size: 12px;
-  color: #74757d;
-}
 .options {
   border-top: 1px solid var(--border);
   font-size: 14px;
@@ -295,7 +283,6 @@ h2 {
 }
 .rules-panel {
   padding: 27px var(--panel-gutter);
-  background: #fff;
   container-type: inline-size;
   min-width: 0;
 }
@@ -378,19 +365,15 @@ h2 {
     grid-row: 2;
   }
 }
-code {
+code,
+td {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.95em;
-  color: #50424b;
 }
 .preview-panel {
   margin-top: 25px;
 }
 .preview-heading {
   flex-wrap: wrap;
-}
-#summary {
-  font-size: 13px;
 }
 .stats {
   display: flex;
@@ -453,7 +436,6 @@ td {
   border-bottom: 1px solid #eeedf0;
 }
 td {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   overflow-wrap: anywhere;
   max-width: 440px;
 }
@@ -466,7 +448,6 @@ td:last-child {
   border-radius: 4px;
   background: #f4edf0;
   color: var(--accent);
-  font-family: inherit;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -511,10 +492,6 @@ td:last-child {
   align-items: center;
   gap: 24px;
 }
-.action-bar h3 {
-  font-size: 15px;
-  font-weight: 600;
-}
 .action-bar p {
   font-size: 13px;
   color: var(--muted);
@@ -538,32 +515,10 @@ td:last-child {
   border-color: #e5bbbc;
   color: #8b2a2e;
 }
-.notice.warning,
-.warnings {
+.notice.warning {
   background: #fff9ee;
   color: #7b5722;
   border-color: #e7d5ac;
-}
-.warnings {
-  border-bottom: 1px solid #e7d5ac;
-  padding: 14px var(--panel-gutter);
-  font-size: 13px;
-}
-.warnings summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-.warnings ul {
-  padding-left: 19px;
-  margin-bottom: 4px;
-  max-height: 200px;
-  overflow: auto;
-}
-.warnings li {
-  overflow-wrap: anywhere;
-}
-.warnings li + li {
-  margin-top: 5px;
 }
 .progress-area {
   padding: 18px var(--panel-gutter);
@@ -594,9 +549,6 @@ progress::-webkit-progress-value {
 progress::-moz-progress-bar {
   background: var(--accent);
 }
-#progress-file {
-  overflow-wrap: anywhere;
-}
 .page-footer {
   display: flex;
   justify-content: space-between;
@@ -621,9 +573,6 @@ progress::-moz-progress-bar {
   .page-heading {
     display: block;
   }
-  .local-badge {
-    margin-top: 17px;
-  }
   .workspace {
     grid-template-columns: 1.2fr 1fr;
   }
@@ -641,9 +590,6 @@ progress::-moz-progress-bar {
   :root {
     --page-gutter: 20px;
   }
-  .site-header {
-    height: 68px;
-  }
   .organization {
     font-size: 10px;
     letter-spacing: 1px;
@@ -659,9 +605,6 @@ progress::-moz-progress-bar {
   }
   .workspace {
     grid-template-columns: 1fr;
-  }
-  .rules-panel {
-    padding: 25px var(--panel-gutter);
   }
   .page-heading {
     margin-bottom: 23px;
@@ -695,9 +638,6 @@ progress::-moz-progress-bar {
   .page-footer {
     flex-direction: column;
     gap: 5px;
-  }
-  .local-badge {
-    font-size: 12px;
   }
   .folder-picker {
     padding: 25px 20px;
@@ -760,9 +700,6 @@ body[data-tool="pdf"] {
 }
 .tool-link:focus-visible {
   outline-offset: -5px;
-}
-select {
-  font: inherit;
 }
 select:focus-visible {
   outline: 3px solid var(--focus);
@@ -856,13 +793,10 @@ select:focus-visible {
 }
 .pdf-table td {
   font-family: inherit;
-  font-size: 13px;
+  vertical-align: top;
 }
 .pdf-table .numeric {
   text-align: right;
-}
-.pdf-table td {
-  vertical-align: top;
 }
 .download-actions {
   display: flex;

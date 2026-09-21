@@ -56,11 +56,7 @@ function renderFiles() {
 function formatValue(type, value) {
   if (value === null || value === undefined || value === "") return "—";
   if (type === "money") return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (type === "number") return String(value);
-  if (type === "date") {
-    const [year, month, day] = value.split("-");
-    return `${year}/${month}/${day}`;
-  }
+  if (type === "date") return value.replaceAll("-", "/");
   return value;
 }
 

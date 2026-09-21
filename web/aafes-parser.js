@@ -101,9 +101,8 @@ function orderHeader(words, width) {
   const po = topRight.find((word) => /^\d{8,12}$/.test(word.text));
   const type = topRight.find((word) => /^Stand[-‐‑–]alone$/i.test(word.text) &&
     sameBand(topRight, word).some((other) => other.text === "Order" && other.x0 >= word.x1 && other.x0 - word.x1 < 30));
-  const date = po && words.filter((word) => word.top > po.top && word.top - po.top <= 45 &&
-    Math.abs(word.x1 - po.x1) <= 45 && toDate(word.text))
-    .sort((a, b) => a.top - b.top)[0];
+  const date = po && words.find((word) => word.top > po.top && word.top - po.top <= 45 &&
+    Math.abs(word.x1 - po.x1) <= 45 && toDate(word.text));
   const partner = words.find((word) => word.top < 85 && word.x0 > width * 0.25 &&
     word.x1 < width * 0.75 && word.text.toUpperCase() === "AAFES");
   return { po: po?.text, document_type: type ? "Stand-alone Order" : "", date_ack: toDate(date?.text), trading_partner: partner ? "AAFES" : "" };
@@ -120,13 +119,12 @@ function vendorNumber(words) {
     const inline = band.find((word) => /^\d+$/.test(word.text) && word.x0 > hash.x1 && word.x0 - hash.x1 < 45);
     if (inline) return inline.text;
     const nextLabel = band.find((word) => word.x0 > hash.x1 && !/^#/.test(word.text));
-    const previousLabel = band.filter((word) => word.x1 < label.x0 && !/^#/.test(word.text)).at(-1);
+    const previousLabel = band.findLast((word) => word.x1 < label.x0 && !/^#/.test(word.text));
     const centre = (label.x0 + hash.x1) / 2;
     const low = previousLabel ? (previousLabel.x1 + centre) / 2 : 0;
     const high = nextLabel ? (centre + (nextLabel.x0 + nextLabel.x1) / 2) / 2 : hash.x1 + 45;
-    const found = words.filter((word) => word.top > label.top + ROW_TOLERANCE && word.top - label.top <= 40 &&
-      word.x0 >= low && (word.x0 + word.x1) / 2 < high && /^\d+$/.test(word.text))
-      .sort((a, b) => a.top - b.top || a.x0 - b.x0)[0];
+    const found = words.find((word) => word.top > label.top + ROW_TOLERANCE && word.top - label.top <= 40 &&
+      word.x0 >= low && (word.x0 + word.x1) / 2 < high && /^\d+$/.test(word.text));
     if (found) return found.text;
   }
   return "";
@@ -156,10 +154,9 @@ function labelledDate(words, second) {
     other.text === second && Math.abs(other.top - word.top) <= ROW_TOLERANCE &&
     other.x0 - word.x1 >= 0 && other.x0 - word.x1 < 30));
   if (!anchor) return null;
-  return words.filter((word) => word.top > anchor.top && word.top - anchor.top <= 70 &&
+  return toDate(words.filter((word) => word.top > anchor.top && word.top - anchor.top <= 70 &&
     Math.abs(word.x0 - anchor.x0) <= 45 && toDate(word.text))
-    .sort((a, b) => Math.abs(a.x0 - anchor.x0) - Math.abs(b.x0 - anchor.x0) || a.top - b.top)
-    .map((word) => toDate(word.text))[0] ?? null;
+    .sort((a, b) => Math.abs(a.x0 - anchor.x0) - Math.abs(b.x0 - anchor.x0) || a.top - b.top)[0]?.text);
 }
 
 function headerBand(words) {

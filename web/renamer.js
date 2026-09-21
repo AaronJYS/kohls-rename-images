@@ -150,8 +150,7 @@ export function validateName(name) {
     /[<>:"/\\|?*\u0000-\u001f]/.test(name) ||
     /[. ]$/.test(name) ||
     /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) ||
-    new TextEncoder().encode(name).length > 255 ||
-    name.length > 255
+    new TextEncoder().encode(name).length > 255
   ) {
     throw new Error(
       `Cannot save the filename “${name}” on Windows and macOS. Check the color map and naming settings.`,

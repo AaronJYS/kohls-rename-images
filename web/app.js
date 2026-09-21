@@ -85,8 +85,8 @@ function renderTable() {
   document.querySelector(".pagination").hidden = totalPages === 1;
 }
 
-function renderPlan() {
-  plan = buildPlan(snapshot.entries, { colors });
+function renderPlan(nextColors = colors) {
+  plan = buildPlan(snapshot.entries, { colors: nextColors });
   completed = false;
   $("preview").hidden = false;
   const stats = [
@@ -193,9 +193,8 @@ $("color-file").addEventListener("change", async (event) => {
     if (file.size > 1024 * 1024)
       throw new Error("Choose a color CSV smaller than 1 MB.");
     const parsed = parseColorCSV(await file.text());
-    if (snapshot) buildPlan(snapshot.entries, { colors: parsed });
+    if (snapshot) renderPlan(parsed);
     colors = parsed;
-    if (snapshot) renderPlan();
     $("color-status").textContent =
       `${file.name} · ${Object.keys(colors).length} custom color entries`;
     $("reset-colors").hidden = false;

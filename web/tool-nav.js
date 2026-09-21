@@ -1,4 +1,4 @@
-const links = [...document.querySelectorAll(".tool-link")];
+const links = document.querySelectorAll(".tool-link");
 
 function showTool() {
   const pdf = location.hash === "#pdf-to-excel";
