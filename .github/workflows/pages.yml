@@ -2,9 +2,9 @@ name: Test and deploy web app
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   pull_request:
-    branches: [main]
+    branches: [main, beta]
   workflow_dispatch:
 
 permissions:
@@ -44,7 +44,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta') && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     concurrency:
       group: github-pages
@@ -57,11 +57,25 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out production
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: production
+      - name: Check out beta
+        uses: actions/checkout@v7
+        with:
+          ref: beta
+          path: beta
+      - name: Assemble production and beta sites
+        run: |
+          mkdir -p site/beta
+          cp -a production/web/. site/
+          cp -a beta/web/. site/beta/
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: web
+          path: site
       - name: Publish web app
         id: deployment
         uses: actions/deploy-pages@v5
