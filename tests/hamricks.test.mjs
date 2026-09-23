@@ -8,15 +8,23 @@ import { create940Workbook } from "../web/hamricks-export.js";
 import "../web/vendor/jszip/jszip.min.js";
 
 // Entirely synthetic input. Private customer workbooks are never test fixtures.
+const withStores = (rows, entries = [1, 2, 5, 7, 9, 12, 103].map(number => `${number} Gaffney`),
+  { startRow = 30, column = rows.reduce((width, row) => Math.max(width, row?.length ?? 0), 0) } = {}) => {
+  for (let i = 0; i < entries.length; i++) {
+    rows[startRow + i] ??= [];
+    rows[startRow + i][column] = entries[i];
+  }
+  return rows;
+};
 const withDetails = (table, { po = "001234", contact = "Example department", ship = "2027-04-05", cancel = "04/09/2027",
-  labelRow = 0, labelColumn = 0, valueColumn = 2 } = {}) => {
+  labelRow = 0, labelColumn = 0, valueColumn = 2, addresses } = {}) => {
   const rows = Array.from({ length: labelRow + 7 }, () => []);
   for (const [offset, label, value] of [[0, "PO#  >", po], [1, "Department Number >", contact],
     [4, "Start Ship Date >", ship], [5, "Cancel Date >", cancel]]) {
     rows[labelRow + offset][labelColumn] = label;
     rows[labelRow + offset][valueColumn] = value;
   }
-  return [...rows, ...table];
+  return withStores([...rows, ...table], addresses);
 };
 const convertTable = (table, details) => convertHamricksSheet(withDetails(table, details));
 const splitSheet = () => withDetails([
@@ -51,9 +59,93 @@ test("split headings map corrected styles into compact nonempty store blocks", (
   assert.deepEqual(result.rows.slice(5), [fullRow(["L", "B02.RD", 2, "EA"]), fullRow(["L", "C03.NV", 7, "EA"])]);
   assert.deepEqual(result.rows.filter((r) => r[0] === "H").map((r) => r[4]), ["001234-05", "001234-12"]);
   assert.deepEqual(result.rows.filter((r) => r[0] === "H").map((r) => r.slice(7, 10)), [
-    ["742 Peachoid Road", "Store 05 Gaffney", "Gaffney"],
+    ["742 Peachoid Road", "Store 5 Gaffney", "Gaffney"],
     ["742 Peachoid Road", "Store 12 Gaffney", "Gaffney"],
   ]);
+});
+
+test("the store directory anchor accepts optional spaces and capitalization while retaining its text", () => {
+  for (const name of ["1Gaffney", "1 Gaffney", "1GAFFNEY", "1 gAfFnEy"]) {
+    for (const before of ["", " "]) for (const after of ["", " "]) {
+      const entry = before + name + after;
+      const result = convertTable([["StyleNumber", "Store01"], ["Item.bK", 2]], { addresses: [entry] });
+      assert.equal(result.rows[1][8], `Store ${name}`);
+      assert.equal(result.rows[1][4], "001234-01");
+    }
+  }
+});
+
+test("store addresses match complete numbers and preserve source text across workbook and CSV exports", () => {
+  const input = withDetails([
+    ["StyleNumber", "Store103", "Store06", "Store1", "Store10", "Store11"], ["Item.bK", 1, 2, 3, 4, 5],
+  ], { addresses: ["1 Gaffney", " 6Columbia ", '10 Columbia, Door "A"', "11 North  Entrance", "103 MiXeD City"] });
+  const expected = [
+    ["001234-103", "Store 103 MiXeD City"], ["001234-06", "Store 6Columbia"], ["001234-01", "Store 1 Gaffney"],
+    ["001234-10", 'Store 10 Columbia, Door "A"'], ["001234-11", "Store 11 North  Entrance"],
+  ];
+  const result = convertHamricksSheet(input);
+  const addresses = rows => rows.filter(row => row[0] === "H").map(row => [row[4], row[8]]);
+  assert.deepEqual(addresses(result.rows), expected);
+  assert.ok(result.rows.filter(row => row[0] === "H").every(row => row[9] === "Gaffney"));
+  for (const bookType of ["biff8", "xlsx", "xlsm"]) {
+    const parsed = readHamricksWorkbook(workbookBytes([["PO", input]], bookType));
+    assert.equal(parsed.sheets[0].error, undefined);
+    assert.deepEqual(addresses(parsed.sheets[0].result.rows), expected);
+  }
+  for (const book of [XLSX.read(create940CSV(result), { type: "string", raw: true }),
+    XLSX.read(create940Workbook(result), { type: "array" })]) {
+    assert.deepEqual(addresses(XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1 })), expected);
+  }
+});
+
+test("store directory lookup stays in the first anchor's column and starts at the anchor row", () => {
+  const input = withDetails([["StyleNumber", "Store6"], ["Item.bK", 2]], { addresses: [] });
+  withStores(input, ["6 Before anchor", "1 Gaffney", "", "6 Columbia"], { startRow: 29, column: 5 });
+  withStores(input, ["1 Gaffney", "6 Wrong column"], { startRow: 30, column: 6 });
+  input[28] = ["", "", "", "", "11 Gaffney", "1 Gaffney Annex"];
+  assert.equal(convertHamricksSheet(input).rows[1][8], "Store 6 Columbia");
+  input[32][5] = "";
+  assert.throws(() => convertHamricksSheet(input), /Could not find store 6.*column F/);
+});
+
+test("missing store directories and exact store numbers fail without inventing addresses", () => {
+  const table = [["StyleNumber", "Store6"], ["Item.bK", 2]];
+  for (const anchor of ["", "11 Gaffney", "01 Gaffney", "Store 1 Gaffney", "1_Gaffney", "1-Gaffney", "1 Gaffney Annex"]) {
+    assert.throws(() => convertTable(table, { addresses: [anchor, "6 Columbia"] }), /store directory starting with "1 Gaffney"/);
+  }
+  assert.throws(() => convertTable(table, { addresses: ["1 Gaffney", "60 Columbia", "103 North"] }), /Could not find store 6/);
+  const active = convertTable([["StyleNumber", "Store6", "Store2"], ["Item.bK", 2, 0]],
+    { addresses: ["1 Gaffney", "6 Columbia"] });
+  assert.equal(active.rows[1][8], "Store 6 Columbia");
+  assert.equal(active.stores.length, 1);
+  const empty = convertTable([["StyleNumber", "Store6"], ["Item.bK", 0]], { addresses: [] });
+  assert.deepEqual(empty.rows, [[...HEADERS_940]]);
+});
+
+test("store directory lookup includes row index 300 and stops before index 301", () => {
+  const input = withDetails([["StyleNumber", "Store6"], ["Item.bK", 2]], { addresses: [] });
+  withStores(input, ["1 Gaffney", "6 Columbia"], { startRow: 299, column: 5 });
+  assert.equal(convertHamricksSheet(input).rows[1][8], "Store 6 Columbia");
+  input[301] = input[300]; input[300] = [];
+  assert.throws(() => convertHamricksSheet(input), /Could not find store 6.*row index 300/);
+  const first = withDetails([["StyleNumber", "Store1"], ["Item.bK", 2]], { addresses: [] });
+  withStores(first, ["1Gaffney"], { startRow: 300, column: 5 });
+  assert.equal(convertHamricksSheet(first).rows[1][8], "Store 1Gaffney");
+  first[301] = first[300]; first[300] = [];
+  assert.throws(() => convertHamricksSheet(first), /store directory starting with "1 Gaffney"/);
+});
+
+test("store directory values use saved formula results and reject Excel errors or uncached formulas", () => {
+  const table = [["StyleNumber", "Store6"], ["Item.bK", 2]];
+  const result = convertTable(table, { addresses: [
+    { t: "str", f: '"1 Gaffney"', v: "1 Gaffney" }, { t: "str", f: '"6Columbia"', v: "6Columbia" },
+  ] });
+  assert.equal(result.rows[1][8], "Store 6Columbia");
+  for (const cell of [{ t: "str", f: "A1", w: "6 Columbia" }, { t: "e", v: 23, w: "6 Columbia" }]) {
+    assert.throws(() => convertTable(table, { addresses: ["1 Gaffney", cell] }), /Cell D32.*(?:saved result|Excel error)/);
+  }
+  assert.throws(() => convertTable(table, { addresses: [{ t: "str", f: "A1", w: "1 Gaffney" }, "6 Columbia"] }),
+    /Cell D31.*saved result/);
 });
 
 test("corrected style, store, and PO header searches ignore capitalization without changing identifiers", () => {
@@ -253,7 +345,7 @@ test("940 template has the requested order details, shipping constants, and empt
     "Bill to Country", "Ship Date", "Cancel Date",
   ]);
   assert.deepEqual(template[1], ["H", "RED", "001234", "A", "001234-05", "HAMRICK'S",
-    "Example department", "742 Peachoid Road", "Store 05 Gaffney", "Gaffney", "SC", "29341", "USA", "L", "CITY", "COL",
+    "Example department", "742 Peachoid Road", "Store 5 Gaffney", "Gaffney", "SC", "29341", "USA", "L", "CITY", "COL",
     "", "", "", "", "", "", "", "", "", "", "", "20270405", "20270409"]);
   assert.deepEqual(template[2], fullRow([]));
   assert.deepEqual(template[3], fullRow([]));
@@ -336,7 +428,7 @@ test("PO detail matches replace earlier values until complete and ignore all lat
     ["Department", "Too late"],
     ["StyleNumber", "Store1"], ["Item.bK", 2],
   ];
-  const header = convertHamricksSheet(input).rows[1];
+  const header = convertHamricksSheet(withStores(input)).rows[1];
   assert.deepEqual([header[6], header[27], header[28]], ["Final MiXeD department", "20270405", "20270409"]);
 });
 
@@ -377,12 +469,12 @@ test("blank or zero PO dates keep the search open, including zero in the 1904 da
 test("a PO detail label can match department, ship, and cancel independently", () => {
   const input = [["PO", "001234"], ["Department, SHIP, and cancel", "2027-04-05"],
     ["StyleNumber", "Store1"], ["Item.bK", 2]];
-  const header = convertHamricksSheet(input).rows[1];
+  const header = convertHamricksSheet(withStores(input)).rows[1];
   assert.deepEqual([header[6], header[27], header[28]], ["2027-04-05", "20270405", "20270405"]);
 });
 
 test("PO detail search checks x greater than 300 before accepting completion", () => {
-  const input = [["PO", "", "001234"], ["StyleNumber", "Store1"], ["Item.bK", 2]];
+  const input = withStores([["PO", "", "001234"], ["StyleNumber", "Store1"], ["Item.bK", 2]]);
   input[298] = ["Department", "", "Last department"];
   input[299] = ["Ship", "", "2027-04-05"];
   input[300] = ["Cancel", "", "2027-04-09"];
@@ -497,7 +589,7 @@ test("omitting leading, middle, and trailing empty stores preserves allocations,
   ]);
   assert.deepEqual(result.stores.map(s => [s.number, s.startRow, s.endRow, s.units]), [[5, 1, 3, 0], [103, 4, 6, 7]]);
   assert.deepEqual(result.rows.filter(row => row[0] === "H").map(row => [row[4], row[8]]),
-    [["001234-05", "Store 05 Gaffney"], ["001234-103", "Store 103 Gaffney"]]);
+    [["001234-05", "Store 5 Gaffney"], ["001234-103", "Store 103 Gaffney"]]);
   assert.deepEqual(result.rows.slice(2, 4).map(row => row.slice(0, 4)), [["L", "A", 2, "EA"], ["L", "C", -2, "EA"]]);
   assert.deepEqual(result.rows.slice(5).map(row => row.slice(0, 4)), [["L", "B", 3, "EA"], ["L", "C", 4, "EA"]]);
   assert.equal(result.lineCount, 4);

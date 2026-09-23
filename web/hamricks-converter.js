@@ -160,6 +160,34 @@ function headerAt(rows, row) {
   };
 }
 
+function setStoreAddresses(rows, stores) {
+  const pending = new Map(stores.filter(store => store.lineCount).map(store => [store.number, store]));
+  if (!pending.size) return;
+  const lastRow = Math.min(300, rows.length - 1);
+  let marker;
+  for (let row = 0; row <= lastRow && !marker; row++) {
+    for (let column = 0; column < (rows[row]?.length ?? 0); column++) {
+      if (/^1 ?gaffney$/.test(label(rows[row][column]))) {
+        checkedValue(rows[row][column], row, column);
+        marker = { row, column };
+        break;
+      }
+    }
+  }
+  if (!marker) throw new Error('Could not find a store directory starting with "1 Gaffney" in this worksheet.');
+  for (let row = marker.row; row <= lastRow; row++) {
+    const cell = rows[row]?.[marker.column], address = text(cell);
+    const number = /^([1-9]\d*)/.exec(address);
+    const store = pending.get(Number(number?.[1]));
+    if (!store) continue;
+    checkedValue(cell, row, marker.column);
+    store.address2 = `Store ${address}`;
+    pending.delete(store.number);
+    if (!pending.size) return;
+  }
+  throw new Error(`Could not find store ${[...pending.keys()].join(", ")} in the store directory in column ${columnName(marker.column)} through row index 300.`);
+}
+
 export function parseHamricksSheet(rows, { date1904 = false } = {}) {
   let header;
   for (let row = 0; row < rows.length && !header; row++) header = headerAt(rows, row);
@@ -194,7 +222,9 @@ export function parseHamricksSheet(rows, { date1904 = false } = {}) {
   }));
   if (1 + stores.reduce((count, store) => count + (store.lineCount ? store.lineCount + 1 : 0), 0) > MAX_OUTPUT_ROWS)
     throw new Error("The 940 template would exceed 100,000 rows. Split the purchase order into smaller worksheets.");
-  return { ...header, stores, styles, ...orderDetails(rows, date1904) };
+  const details = orderDetails(rows, date1904);
+  setStoreAddresses(rows, stores);
+  return { ...header, stores, styles, ...details };
 }
 
 export function create940Template(order) {
@@ -205,7 +235,7 @@ export function create940Template(order) {
     const storeNumber = String(store.number).padStart(2, "0");
     header.splice(0, 16, "H", "RED", order.customerPO, "A",
       `${order.customerPO}-${storeNumber}`, "HAMRICK'S",
-      order.contactName, "742 Peachoid Road", `Store ${storeNumber} Gaffney`, "Gaffney", "SC", "29341", "USA", "L", "CITY", "COL");
+      order.contactName, "742 Peachoid Road", store.address2, "Gaffney", "SC", "29341", "USA", "L", "CITY", "COL");
     // Third Party Account # through Bill to Country (inclusive) stay empty.
     header[27] = order.shipDate;
     header[28] = order.cancelDate;

@@ -11,7 +11,7 @@ import { previewWindow } from "../web/hamricks-preview.js";
 // Synthetic workbooks and corrupt variants stay in memory; no binary fixtures.
 const book = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([
-  ["PO#", "001234"], ["Department", "Receiving"], [], [],
+  ["PO#", "001234", "1 Gaffney"], ["Department", "Receiving", "5 Gaffney"], [], [],
   ["Ship", "2027-04-05"], ["Cancel", "2027-04-09"], [],
   ["Style Number", "Store 5"], ["000007", 2],
 ]), "Order");

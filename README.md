@@ -171,8 +171,15 @@ The converter builds the 940 template using these rules:
   1904 date system; a zero serial is treated as missing by this lookup. Text dates support `YYYY-MM-DD`,
   `YYYY/MM/DD`, `YYYYMMDD`, `MM/DD/YYYY`, and `D-MMM-YYYY`, including two-digit
   years for the last two formats (00–29 mean 2000–2029; 30–99 mean 1930–1999).
-- Fill Ship to Address 1 with `742 Peachoid Road`, Address2 with `Store i Gaffney`
-  (using the same padded store number as Reference), City with `Gaffney`, State
+- Find the first cell matching `1 Gaffney` or `1Gaffney`, ignoring capitalization
+  and surrounding whitespace. Starting there, read the store directory down that
+  same column through row index 300. Match each exported store by its complete
+  unpadded number at the beginning of the cell text. Ship to Address2 is `Store `
+  followed by that cell's trimmed text, preserving its casing and internal spacing:
+  `6 Columbia` becomes `Store 6 Columbia`. Missing directory entries cause an error.
+  Stores with no item lines need no directory entry. Reference still uses the
+  store number padded to at least two digits.
+- Fill Ship to Address 1 with `742 Peachoid Road`, City with `Gaffney`, State
   with `SC`, Postal Code with `29341`, Country with `USA`, Shipment Type with `L`,
   Carrier with `CITY`, and Shipment Terms with `COL`. Leave Third Party Account #
   through Bill to Country inclusive empty.
