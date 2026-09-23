@@ -19,12 +19,13 @@ function renderFiles() {
   $("pdf-queue").hidden = !files.length;
   $("pdf-file-list").replaceChildren(...files.map((file) => {
     const li = document.createElement("li");
+    li.className = "file-row";
     const info = document.createElement("div");
     const name = document.createElement("span");
-    name.className = "pdf-file-name";
+    name.className = "file-name";
     name.textContent = file.file.name;
     const status = document.createElement("span");
-    status.className = `pdf-file-status${file.error ? " file-error" : ""}`;
+    status.className = `file-status${file.error ? " file-error" : ""}`;
     status.textContent = file.error || (file.result ? "" : file.status);
     status.hidden = !status.textContent;
     info.append(name, status);
@@ -50,8 +51,7 @@ function formatValue(type, value) {
   return value;
 }
 
-function renderTable() {
-  const file = currentFile();
+function renderTable(file = currentFile()) {
   if (!file) return;
   const records = file.result.records;
   const pageCount = Math.ceil(records.length / PAGE_SIZE);
@@ -67,7 +67,7 @@ function renderTable() {
     }
     return tr;
   }));
-  $("pdf-page-label").textContent = `${first + 1}–${Math.min(first + PAGE_SIZE, records.length)} of ${records.length} line items`;
+  $("pdf-page-label").textContent = `${first + 1}–${Math.min(first + PAGE_SIZE, records.length)} of ${records.length} line ${records.length === 1 ? "item" : "items"}`;
   $("pdf-previous-page").disabled = page === 0;
   $("pdf-next-page").disabled = page === pageCount - 1;
   $("pdf-pagination").hidden = pageCount < 2;
@@ -76,9 +76,10 @@ function renderTable() {
 function render() {
   const ready = readyFiles();
   if (!currentFile()) { selectedId = ready[0]?.id ?? null; page = 0; }
+  const file = currentFile();
   renderFiles();
   $("select-pdfs").disabled = busy || exporting;
-  $("download-excel").disabled = busy || exporting || !currentFile();
+  $("download-excel").disabled = busy || exporting || !file;
   $("download-pdf-zip").disabled = busy || exporting;
   $("download-pdf-zip").hidden = ready.length < 2;
   $("pdf-preview-file").disabled = exporting;
@@ -92,10 +93,11 @@ function render() {
     option.textContent = file.file.name;
     return option;
   }));
-  if (!currentFile()) return;
+  $("pdf-preview-file").title = file?.file.name ?? "";
+  if (!file) return;
   $("pdf-preview-file").value = String(selectedId);
   $("pdf-action-title").textContent = "";
-  renderTable();
+  renderTable(file);
 }
 
 async function addFiles(incoming) {
@@ -108,14 +110,14 @@ async function addFiles(incoming) {
     try {
       validatePDF(file);
       if (files.some((entry) => entry.file.name === file.name && entry.file.size === file.size && entry.file.lastModified === file.lastModified)) { duplicates++; continue; }
-      if (files.length >= 50) throw new Error("Up to 50 PDFs can be selected at a time. Clear or remove files before adding more.");
-      const entry = { id: nextId++, file, result: null, error: "", status: "Waiting" };
+      if (files.length >= 50) throw new Error("Up to 50 PDFs can be selected at a time. Remove a PDF before adding more.");
+      const entry = { id: nextId++, file, result: null, error: "", status: "Waiting…" };
       files.push(entry);
       added.push(entry);
     } catch (error) { errors.push(`${file.name}: ${error.message}`); }
   }
   if (!added.length) {
-    message(errors.join(" ") || "These PDFs are already selected.", "warning");
+    message(errors.join(" ") || (incoming.length === 1 ? "This PDF is already selected." : "These PDFs are already selected."), "warning");
     return;
   }
   busy = true;
@@ -150,7 +152,7 @@ async function addFiles(incoming) {
   $("pdf-progress-area").hidden = true;
   const notes = [...errors];
   if (stopped) notes.push(readyFiles().length ? "Extraction stopped. Completed PDFs are still available below." : "Extraction stopped.");
-  if (duplicates) notes.push(`${duplicates} already-selected PDF(s) were skipped.`);
+  if (duplicates) notes.push(`${duplicates} already selected ${duplicates === 1 ? "PDF was" : "PDFs were"} skipped.`);
   message(notes.join(" "), errors.length || stopped ? "warning" : "");
   render();
   requestAnimationFrame(() => {
@@ -192,7 +194,7 @@ async function download(all) {
   exporting = true;
   render();
   message("");
-  $("pdf-action-title").textContent = "Preparing...";
+  $("pdf-action-title").textContent = "Preparing…";
   let successMessage = "";
   try {
     const { createWorkbook, createWorkbookArchive, downloadFile } = await import("./excel-export.js");
@@ -202,7 +204,7 @@ async function download(all) {
       : await createWorkbook(file.result.records);
     const name = all ? "AAFES_purchase_orders.zip" : outputName(file.file.name);
     downloadFile(data, name);
-    successMessage = "Check downloads folder.";
+    successMessage = "Check your downloads folder.";
   } catch (error) { message(`The download could not be prepared. ${error.message}`, "error"); }
   finally { exporting = false; render(); }
   if (successMessage) {

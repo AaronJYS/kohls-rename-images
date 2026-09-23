@@ -177,7 +177,7 @@ test("collision planning reserves filenames and directories case-insensitively",
 
 test("CSV color maps support headers, BOM, quoted commas and case normalization", () => {
   const colors = parseColorCSV(
-    '\ufeffcode,name\r\nbk,Jet Black\r\nXX,"Blue, Green"\r\n',
+    '\ufeffCoDe,NaMe\r\nbk,Jet Black\r\nXX,"Blue, Green"\r\n',
   );
   const plan = buildPlan(entries(["42.BK.jpg", "42.XX.png"]), { colors });
   assert.equal(namesOf(plan)["42.BK.jpg"], "42_Jet Black_MAIN.jpg");

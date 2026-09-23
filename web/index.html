@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Rename Kohl's product images and convert AAFES purchase order PDFs to Excel. Preview and process files on your device."
+      content="Rename Kohl's product images, convert AAFES PDFs to Excel, and convert Hamrick's purchase orders to 940 templates. Process files on your device."
     />
     <meta
       http-equiv="Content-Security-Policy"
@@ -17,6 +17,7 @@
     <script type="module" src="./app.js"></script>
     <script type="module" src="./tool-nav.js"></script>
     <script type="module" src="./pdf-app.js"></script>
+    <script type="module" src="./hamricks-app.js"></script>
   </head>
   <body>
     <header class="site-header">
@@ -30,6 +31,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8Z M14 3v5h5 M8 12h8m-8 4h8m-4-4v7"/></svg>
           PDF to Excel
         </a>
+        <a class="tool-link" href="#hamricks-po-to-940">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8Z M14 3v5h5 M8 12h8m-8 4h8m-4-4v7"/></svg>
+          Hamrick’s PO to 940
+        </a>
       </nav>
     </header>
     <main>
@@ -37,10 +42,9 @@
       <div class="page-heading">
         <div>
           <p class="eyebrow">KOHL’S IMAGE RENAMER</p>
-          <h1>A folder in. Ready-to-use names out.</h1>
+          <h1>Rename your product images</h1>
           <p class="intro">
-            Create a renamed copy of your product images inside the folder you
-            select.
+            Create a renamed copy of your product images in the selected folder.
           </p>
         </div>
       </div>
@@ -64,7 +68,7 @@
         <section class="source-panel" aria-labelledby="source-heading">
           <div class="panel-heading">
             <h2 id="source-heading">
-              <span class="step">01</span>Select your images
+              <span class="step">01</span>Select your image folder
             </h2>
             <span id="source-status" class="muted"></span>
           </div>
@@ -75,9 +79,9 @@
               />
               <path d="M5 18h46" />
             </svg>
-            <h3 id="folder-title">Choose a product image folder</h3>
+            <h3 id="folder-title">Select a product image folder</h3>
             <p id="folder-description">
-              Subfolders and other files come along, too.
+              Subfolders and other files are included.
             </p>
             <button id="select-folder" class="button primary" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -89,16 +93,27 @@
           <details class="options">
             <summary>Naming options</summary>
             <div class="options-content">
-              <label class="file-label" for="color-file"
-                >Custom color map
-                <span class="muted">(optional CSV: code,name)</span></label
-              >
+              <p id="color-map-label" class="file-label">
+                Custom color map
+                <span class="muted">(optional CSV: code,name)</span>
+              </p>
               <div class="file-controls">
                 <input
                   id="color-file"
                   type="file"
                   accept=".csv,text/csv"
-                /><button
+                  aria-labelledby="color-map-label"
+                  hidden
+                />
+                <button
+                  id="select-colors"
+                  class="button secondary compact"
+                  type="button"
+                  aria-describedby="color-map-label color-status"
+                >
+                  Select CSV
+                </button>
+                <button
                   id="reset-colors"
                   class="text-button"
                   type="button"
@@ -176,17 +191,17 @@
       >
         <div class="panel-heading preview-heading">
           <h2 id="preview-heading">
-            <span class="step">02</span>Review the filenames
+            <span class="step">02</span>Review your filenames
           </h2>
         </div>
         <div id="stats" class="stats"></div>
         <div class="table-frame">
           <div class="table-scroll" tabindex="0" aria-label="Filename preview">
-            <table>
+            <table class="filename-table">
               <thead>
                 <tr>
                   <th scope="col">Original filename</th>
-                  <th scope="col">Output filename</th>
+                  <th scope="col">Renamed filename</th>
                   <th scope="col">View</th>
                 </tr>
               </thead>
@@ -205,8 +220,8 @@
           </div>
         </div>
         <div class="action-bar">
-          <div>
-            <p id="action-title" class="muted small" role="status" aria-live="polite"></p>
+          <div class="action-copy">
+            <p id="action-title" class="muted" role="status" aria-live="polite"></p>
             <p id="action-description" hidden></p>
           </div>
           <div class="download-actions">
@@ -230,8 +245,8 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">AAFES PDF TO EXCEL</p>
-            <h1>Purchase orders in. Spreadsheets out.</h1>
-            <p class="intro">Turn AAFES purchase order PDFs into organized Excel files.</p>
+            <h1>Convert purchase orders to Excel</h1>
+            <p class="intro">Turn AAFES purchase order PDFs into Excel workbooks.</p>
           </div>
         </div>
 
@@ -241,18 +256,18 @@
             <div class="panel-heading">
               <h2 id="pdf-source-heading"><span class="step">01</span>Select your purchase orders</h2>
             </div>
-            <div id="pdf-drop-zone" class="folder-picker pdf-picker">
+            <div id="pdf-drop-zone" class="folder-picker drop-zone">
               <svg class="folder-icon" viewBox="0 0 56 48" aria-hidden="true"><path d="M31 3H13a3 3 0 0 0-3 3v36a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V18Z M31 3v15h15 M18 25h20m-20 7h20m-20 7h12"/></svg>
-              <h3>Drop your purchase order PDFs here</h3>
+              <h3>Drop your purchase orders here</h3>
               <p>Select one or more text-based PDFs.</p>
               <input id="pdf-files" type="file" accept=".pdf,application/pdf" multiple hidden />
               <button id="select-pdfs" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5"/></svg><span>Select PDFs</span></button>
             </div>
-            <div id="pdf-queue" class="pdf-queue" hidden>
-              <ul id="pdf-file-list" class="pdf-file-list" aria-label="Selected PDFs"></ul>
+            <div id="pdf-queue" class="file-selection" hidden>
+              <ul id="pdf-file-list" class="file-list" aria-label="Selected PDFs"></ul>
             </div>
             <div id="pdf-progress-area" class="progress-area" hidden>
-              <div><span id="pdf-progress-label" role="status" aria-live="polite">Reading your PDF…</span><button id="stop-pdfs" class="text-button" type="button">Stop</button></div>
+              <div><span id="pdf-progress-label" role="status" aria-live="polite">Reading PDF…</span><button id="stop-pdfs" class="text-button" type="button">Stop</button></div>
               <progress id="pdf-progress" max="100" value="0" aria-label="PDF extraction progress"></progress>
             </div>
           </section>
@@ -261,13 +276,61 @@
         <section id="pdf-preview" class="preview-panel" aria-labelledby="pdf-preview-heading" hidden>
           <div class="panel-heading preview-heading">
             <h2 id="pdf-preview-heading"><span class="step">02</span>Review your purchase orders</h2>
-            <div id="pdf-preview-file-control" class="preview-file" hidden><label for="pdf-preview-file" class="sr-only">PDF to preview</label><select id="pdf-preview-file" class="select-field"></select></div>
+            <div id="pdf-preview-file-control" class="preview-control" hidden>
+              <label for="pdf-preview-file" class="field-label">PDF</label>
+              <select id="pdf-preview-file" class="select-field" aria-controls="pdf-preview-body"></select>
+            </div>
           </div>
-          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 9 columns"><table class="pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
+          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 9 columns"><table class="data-table pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
           <div class="table-footer"><span id="pdf-page-label" class="muted small"></span><div id="pdf-pagination" class="pagination"><button id="pdf-previous-page" class="text-button" type="button">Previous</button><button id="pdf-next-page" class="text-button" type="button">Next</button></div></div>
           <div class="action-bar">
-            <div><p id="pdf-action-title" class="muted small" role="status" aria-live="polite"></p></div>
+            <div class="action-copy"><p id="pdf-action-title" class="muted" role="status" aria-live="polite"></p></div>
             <div class="download-actions"><button id="download-pdf-zip" class="button secondary" type="button" hidden>Download all (ZIP)</button><button id="download-excel" class="button primary" type="button">Download Excel<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button></div>
+          </div>
+        </section>
+      </div>
+      <div id="hamricks-tool" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">HAMRICK’S PO TO 940</p>
+            <h1>Convert purchase orders to 940</h1>
+            <p class="intro">Turn Hamrick’s purchase order workbooks into 940 CSV templates.</p>
+          </div>
+        </div>
+        <div id="hamricks-message" class="notice" role="status" aria-live="polite" hidden></div>
+        <div class="workspace">
+          <section class="source-panel" aria-labelledby="hamricks-source-heading">
+            <div class="panel-heading">
+              <h2 id="hamricks-source-heading"><span class="step">01</span>Select your purchase order</h2>
+            </div>
+            <div id="hamricks-drop-zone" class="folder-picker drop-zone">
+              <svg class="folder-icon" viewBox="0 0 56 48" aria-hidden="true"><path d="M31 3H13a3 3 0 0 0-3 3v36a3 3 0 0 0 3 3h30a3 3 0 0 0 3-3V18Z M31 3v15h15 M18 25h20m-20 7h20m-10-7v14"/></svg>
+              <h3>Drop your purchase order here</h3>
+              <p>Select one .xls, .xlsx, or .xlsm workbook.</p>
+              <input id="hamricks-file" type="file" accept=".xls,.xlsx,.xlsm,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" hidden />
+              <button id="select-hamricks" class="button primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m-4 4 4-4 4 4M4 15v5h16v-5"/></svg><span>Select workbook</span></button>
+            </div>
+            <div id="hamricks-selection" class="file-selection" hidden>
+              <div class="file-row"><span id="hamricks-filename" class="file-name"></span><button id="hamricks-clear" class="text-button" type="button">Remove</button></div>
+            </div>
+            <div id="hamricks-progress" class="progress-area" hidden><div><span role="status" aria-live="polite">Reading workbook…</span><button id="stop-hamricks" class="text-button" type="button">Stop</button></div><progress aria-label="Reading workbook"></progress></div>
+          </section>
+        </div>
+        <section id="hamricks-preview" class="preview-panel" aria-labelledby="hamricks-preview-heading" hidden>
+          <div class="panel-heading preview-heading">
+            <h2 id="hamricks-preview-heading"><span class="step">02</span>Review your 940 template</h2>
+            <div id="hamricks-sheet-control" class="preview-control" hidden>
+              <label for="hamricks-sheet" class="field-label">Worksheet</label>
+              <select id="hamricks-sheet" class="select-field" aria-controls="hamricks-preview-content hamricks-sheet-error"></select>
+            </div>
+          </div>
+          <div id="hamricks-sheet-error" class="notice error panel-notice" role="status" aria-live="polite" hidden></div>
+          <div id="hamricks-preview-content">
+            <div class="table-frame"><div id="hamricks-table-scroll" class="table-scroll" tabindex="0" aria-label="940 template preview, scroll to see all rows and 29 columns"><table class="data-table hamricks-table"><thead><tr id="hamricks-table-head" aria-rowindex="1"></tr></thead><tbody id="hamricks-preview-body"></tbody></table></div></div>
+            <div class="action-bar">
+              <div class="action-copy"><p id="hamricks-download-status" class="muted" role="status" aria-live="polite"></p></div>
+              <div class="download-actions"><button id="download-940-csv" class="button primary" type="button">Download CSV<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button></div>
+            </div>
           </div>
         </section>
       </div>

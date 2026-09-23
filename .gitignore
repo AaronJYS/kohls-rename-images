@@ -8,3 +8,13 @@ __pycache__/
 .build-venv/
 node_modules/
 .DS_Store
+
+# Private PO samples and conversion outputs are local specification/test data.
+*HAMRICK*.xls
+*HAMRICK*.xlsx
+*HAMRICK*.xlsm
+*HAMRICK*.csv
+*_940.xls
+*_940.xlsx
+*_940.xlsm
+*_940.csv

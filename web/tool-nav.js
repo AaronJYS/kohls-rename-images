@@ -1,13 +1,18 @@
 const links = document.querySelectorAll(".tool-link");
+const tools = {
+  "#image-name-converter": { id: "image-tool", name: "images", title: "Kohl’s Image Renamer" },
+  "#pdf-to-excel": { id: "pdf-tool", name: "pdf", title: "AAFES PDF to Excel" },
+  "#hamricks-po-to-940": { id: "hamricks-tool", name: "hamricks", title: "Hamrick’s PO to 940" },
+};
 
 function showTool() {
-  const pdf = location.hash === "#pdf-to-excel";
-  document.body.dataset.tool = pdf ? "pdf" : "images";
-  document.getElementById("image-tool").hidden = pdf;
-  document.getElementById("pdf-tool").hidden = !pdf;
-  document.title = pdf ? "AAFES PDF to Excel · JYS Enterprise" : "Kohl’s Image Renamer · JYS Enterprise";
+  const hash = Object.hasOwn(tools, location.hash) ? location.hash : "#image-name-converter";
+  const selected = tools[hash];
+  document.body.dataset.tool = selected.name;
+  for (const tool of Object.values(tools)) document.getElementById(tool.id).hidden = tool !== selected;
+  document.title = `${selected.title} · JYS Enterprise`;
   for (const link of links) {
-    if ((link.hash === "#pdf-to-excel") === pdf) link.setAttribute("aria-current", "page");
+    if (link.hash === hash) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
 }

@@ -38,7 +38,15 @@ jobs:
           node --check web/excel-export.js
           node --check web/pdf-app.js
           node --check web/tool-nav.js
-      - name: Verify image conversion, PDF extraction, and Excel output
+          node --check web/hamricks-converter.js
+          node --check web/hamricks-reader.js
+          node --check web/hamricks-zip.js
+          node --check web/hamricks-file.js
+          node --check web/hamricks-preview.js
+          node --check web/hamricks-worker.js
+          node --check web/hamricks-export.js
+          node --check web/hamricks-app.js
+      - name: Verify image conversion, PDF extraction, and spreadsheet conversion
         run: npm test
 
   deploy:

@@ -13,6 +13,7 @@ export const COLUMNS = [
 ];
 
 const HEADERS = ["Line", "UPC", "SKU", "Description", "Qty", "UOM", "Price", "Amount"];
+const isLabel = (word, name) => word.text.toLowerCase() === name.toLowerCase();
 const ROW_TOLERANCE = 2.5;
 const LINE_NUMBER = /^\d{4,6}$/;
 export const MAX_EXCEL_CELL_TEXT = 32767;
@@ -100,7 +101,7 @@ function orderHeader(words, width) {
   const topRight = words.filter((word) => word.top <= 145 && word.x1 > width * 0.7);
   const po = topRight.find((word) => /^\d{8,12}$/.test(word.text));
   const type = topRight.find((word) => /^Stand[-‐‑–]alone$/i.test(word.text) &&
-    sameBand(topRight, word).some((other) => other.text === "Order" && other.x0 >= word.x1 && other.x0 - word.x1 < 30));
+    sameBand(topRight, word).some((other) => isLabel(other, "Order") && other.x0 >= word.x1 && other.x0 - word.x1 < 30));
   const date = po && words.find((word) => word.top > po.top && word.top - po.top <= 45 &&
     Math.abs(word.x1 - po.x1) <= 45 && toDate(word.text));
   const partner = words.find((word) => word.top < 85 && word.x0 > width * 0.25 &&
@@ -112,7 +113,7 @@ function vendorNumber(words) {
   for (const label of words) {
     // The Vendor # label is centered in a table cell. Its value is left-aligned
     // at the cell edge, NOT directly beneath the label's left edge.
-    if (label.text !== "Vendor") continue;
+    if (!isLabel(label, "Vendor")) continue;
     const band = sameBand(words, label);
     const hash = band.find((word) => /^#[:.]?$/.test(word.text) && word.x0 >= label.x1 && word.x0 - label.x1 < 25);
     if (!hash) continue;
@@ -132,8 +133,8 @@ function vendorNumber(words) {
 
 function printedOrderTotal(words, bounds) {
   if (!bounds) return { value: null, extraValues: false };
-  const heading = words.find((word) => word.text === "Package" &&
-    sameBand(words, word).some((other) => other.text === "Description" && other.x0 > word.x1));
+  const heading = words.find((word) => isLabel(word, "Package") &&
+    sameBand(words, word).some((other) => isLabel(other, "Description") && other.x0 > word.x1));
   if (!heading) return { value: null, extraValues: false };
   const amountColumn = bounds.find((column) => column.name === "Amount");
   const candidates = [];
@@ -150,8 +151,8 @@ function printedOrderTotal(words, bounds) {
 }
 
 function labelledDate(words, second) {
-  const anchor = words.find((word) => word.text === "Requested" && words.some((other) =>
-    other.text === second && Math.abs(other.top - word.top) <= ROW_TOLERANCE &&
+  const anchor = words.find((word) => isLabel(word, "Requested") && words.some((other) =>
+    isLabel(other, second) && Math.abs(other.top - word.top) <= ROW_TOLERANCE &&
     other.x0 - word.x1 >= 0 && other.x0 - word.x1 < 30));
   if (!anchor) return null;
   return toDate(words.filter((word) => word.top > anchor.top && word.top - anchor.top <= 70 &&
@@ -161,16 +162,16 @@ function labelledDate(words, second) {
 
 function headerBand(words) {
   for (const word of words) {
-    if (word.text !== "Amount") continue;
+    if (!isLabel(word, "Amount")) continue;
     const band = words.filter((other) => Math.abs(other.top - word.top) <= ROW_TOLERANCE);
-    if (["Qty", "UOM", "Price"].every((label) => band.some((item) => item.text === label))) return band;
+    if (["Qty", "UOM", "Price"].every((label) => band.some((item) => isLabel(item, label)))) return band;
   }
   return null;
 }
 
 function columnBounds(band) {
   const centres = HEADERS.map((name) => {
-    const word = band.find((item) => item.text === name);
+    const word = band.find((item) => isLabel(item, name));
     return word ? (word.x0 + word.x1) / 2 : null;
   });
   if (centres.some((centre, i) => centre === null || (i && centre <= centres[i - 1]))) return null;
@@ -359,7 +360,7 @@ export function createExtractor({ processedDate = localDate() } = {}) {
       }
     },
     finish() {
-      if (!records.length) throw new Error("No purchase order line items were found. Choose a text-based AAFES Stand-alone Order PDF. Scans and photographs need OCR first.");
+      if (!records.length) throw new Error("No purchase order line items were found. Select a text-based AAFES Stand-alone Order PDF. Scans and photographs need OCR first.");
       addOrderTotals(records);
       addGroupedTotals(records);
       const linesByOrder = new Map();

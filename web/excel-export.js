@@ -47,7 +47,7 @@ function worksheetXML(records, columns) {
       const ref = `${columnName(col)}${index + 2}`;
       const value = row[key];
       if (value === null || value === undefined || value === "") return `<c r="${ref}" s="1"/>`;
-      if ((type === "number" || type === "money") && typeof value === "number" && Number.isFinite(value))
+      if ((type === "number" || type === "money") && Number.isFinite(value))
         return `<c r="${ref}" s="${type === "number" ? 2 : 3}"><v>${value}</v></c>`;
       if (type === "date") {
         const date = excelDate(value);

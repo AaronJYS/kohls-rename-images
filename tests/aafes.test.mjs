@@ -22,6 +22,23 @@ test("extraction matches the Python fixture across POs, continuation pages, and 
   assert.match(result.warnings[0], /1 repeated PO line/);
 });
 
+test("column headers and metadata labels ignore capitalization while source values stay unchanged", () => {
+  const labels = new Set(["line", "upc", "sku", "description", "qty", "uom", "price", "amount",
+    "stand-alone", "order", "aafes", "vendor", "requested", "ship", "delivery", "package", "vendor's", "style"]);
+  const options = { processedDate: "2028-01-01" };
+  const expected = extractPages(fixtures, options);
+  for (const changeCase of [s => s.toLowerCase(), s => s.toUpperCase(),
+    s => [...s].map((letter, i) => i % 2 ? letter.toUpperCase() : letter.toLowerCase()).join("")]) {
+    const pages = copy();
+    for (const page of pages) {
+      for (const word of page.words) {
+        if (labels.has(word.text.toLowerCase())) word.text = changeCase(word.text);
+      }
+    }
+    assert.deepEqual(extractPages(pages, options), expected);
+  }
+});
+
 test("PO and SKU totals include each matching item at its own unit price", () => {
   const pages = [copy()[0]];
   pages[0].words.find((word) => word.text === "000765432").text = "003278934";
@@ -225,7 +242,7 @@ test("accounting negatives, currency symbols, and comma decimals preserve extrac
 
 test("file validation catches wrong types, zero-byte files, and oversized inputs", () => {
   assert.doesNotThrow(() => validatePDF({ name: "ORDER.PDF", size: 100 }));
-  assert.throws(() => validatePDF({ name: "order.txt", size: 100 }), /Choose a PDF/);
+  assert.throws(() => validatePDF({ name: "order.txt", size: 100 }), /Select a PDF/);
   assert.throws(() => validatePDF({ name: "order.pdf", size: 0 }), /empty/);
   assert.throws(() => validatePDF({ name: "order.pdf", size: MAX_PDF_BYTES + 1 }), /50 MB/);
 });

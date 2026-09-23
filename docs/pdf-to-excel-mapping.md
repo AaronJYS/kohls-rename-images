@@ -43,7 +43,8 @@ conversion failures directly and does not display a separate issues panel.
 2. Read the dates beneath `Requested Ship` and `Requested Delivery`. Missing
    dates stay blank and produce a review warning.
 3. Identify the table headers `Line`, `UPC`, `SKU`, `Description`, `Qty`, `UOM`,
-   `Price`, and `Amount`. Midpoints between header centers define columns;
+   `Price`, and `Amount`. Match column headers and metadata labels regardless of
+   capitalization, without changing source values. Midpoints between header centers define columns;
    positioned words within 2.5 points form a row. Reuse the table bounds on
    continuation pages.
 4. Accept item rows with a line number, numeric quantity, and numeric unit price.

@@ -25,6 +25,7 @@ function setBusy(value) {
   busy = value;
   $("select-folder").disabled = value || !supported;
   $("color-file").disabled = value;
+  $("select-colors").disabled = value;
   $("reset-colors").disabled = value;
   $("strict-colors").disabled = value;
   refreshAction();
@@ -78,7 +79,7 @@ function renderTable() {
   });
   $("preview-body").replaceChildren(...rows);
   $("page-label").textContent = plan.files.length
-    ? `${first + 1}–${Math.min(first + PAGE_SIZE, plan.files.length)} of ${plan.files.length} files`
+    ? `${first + 1}–${Math.min(first + PAGE_SIZE, plan.files.length)} of ${plan.files.length} ${plan.files.length === 1 ? "file" : "files"}`
     : "No files to preview.";
   $("previous-page").disabled = page === 0;
   $("next-page").disabled = page >= totalPages - 1;
@@ -90,8 +91,8 @@ function renderPlan(nextColors = colors) {
   completed = false;
   $("preview").hidden = false;
   const stats = [
-    [plan.matched, "images matched"],
-    [plan.unchanged, "files copied as is"],
+    [plan.matched, `${plan.matched === 1 ? "image" : "images"} matched`],
+    [plan.unchanged, `${plan.unchanged === 1 ? "file" : "files"} copied as is`],
     [plan.groupCount, `style/color ${plan.groupCount === 1 ? "group" : "groups"}`],
   ];
   $("stats").replaceChildren(
@@ -145,17 +146,17 @@ $("select-folder").addEventListener("click", async () => {
     message("");
     $("preview").hidden = true;
     $("folder-title").textContent = handle.name;
-    $("folder-description").textContent = "Reading the folder…";
-    $("source-status").textContent = "Scanning";
+    $("folder-description").textContent = "Reading folder…";
+    $("source-status").textContent = "Scanning…";
     snapshot = await scanFolder(handle, {
       onProgress: (count) => {
         $("folder-description").textContent =
-          `Reading the folder… ${count} items found`;
+          `Reading folder… ${count} ${count === 1 ? "item" : "items"} found`;
       },
     });
     renderPlan();
     $("folder-description").textContent =
-      `${plan.files.length} ${plan.files.length === 1 ? "file" : "files"}.`;
+      `${plan.files.length} ${plan.files.length === 1 ? "file" : "files"} selected`;
     $("source-status").textContent = "";
     $("select-folder").querySelector("span").textContent = "Change folder";
     requestAnimationFrame(() => {
@@ -173,9 +174,9 @@ $("select-folder").addEventListener("click", async () => {
       plan = null;
       completed = false;
       $("preview").hidden = true;
-      $("folder-title").textContent = "Choose a product image folder";
+      $("folder-title").textContent = "Select a product image folder";
       $("folder-description").textContent =
-        "Subfolders and other files come along, too.";
+        "Subfolders and other files are included.";
       $("source-status").textContent = "Select a folder";
     }
     if (error.name !== "AbortError") message(explainError(error), "error");
@@ -184,17 +185,20 @@ $("select-folder").addEventListener("click", async () => {
   }
 });
 
+$("select-colors").addEventListener("click", () => $("color-file").click());
 $("color-file").addEventListener("change", async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   setBusy(true);
   try {
     if (file.size > 1024 * 1024)
-      throw new Error("Choose a color CSV smaller than 1 MB.");
+      throw new Error("Select a color CSV smaller than 1 MB.");
     const parsed = parseColorCSV(await file.text());
     if (snapshot) renderPlan(parsed);
+    const count = Object.keys(parsed).length;
     $("color-status").textContent =
-      `${file.name} · ${Object.keys(parsed).length} custom color entries`;
+      `Using ${file.name} with ${count} color ${count === 1 ? "entry" : "entries"}.`;
+    $("select-colors").textContent = "Change CSV";
     $("reset-colors").hidden = false;
     message("");
     colors = parsed;
@@ -209,6 +213,7 @@ $("reset-colors").addEventListener("click", () => {
   colors = {};
   $("color-file").value = "";
   $("color-status").textContent = "Using the built-in color map.";
+  $("select-colors").textContent = "Select CSV";
   $("reset-colors").hidden = true;
   if (snapshot) renderPlan();
   message("");
@@ -246,7 +251,7 @@ $("create-folder").addEventListener("click", async () => {
   abortController = new AbortController();
   $("cancel-copy").hidden = false;
   $("cancel-copy").disabled = false;
-  $("action-title").textContent = "Preparing...";
+  $("action-title").textContent = "Preparing…";
   $("action-description").hidden = true;
   $("source-status").textContent = "";
   try {
@@ -270,11 +275,11 @@ $("create-folder").addEventListener("click", async () => {
         )
       : run());
     completed = true;
-    $("action-title").textContent = "Check original folder.";
+    $("action-title").textContent = "Check your original folder.";
   } catch (error) {
     const stopped = error.name === "AbortError";
     const partial = error.outputName
-      ? ` An incomplete folder may remain at ${source.name}/${error.outputName}; ${error.completedFiles} files finished copying. Select the source again before retrying.`
+      ? ` An incomplete folder may remain at ${source.name}/${error.outputName}; ${error.completedFiles} ${error.completedFiles === 1 ? "file" : "files"} finished copying. Select the source again before retrying.`
       : "";
     message(
       (stopped ? "Copy stopped." : explainError(error)) + partial,

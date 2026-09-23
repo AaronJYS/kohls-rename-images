@@ -8,8 +8,8 @@ export function outputName(name) {
 }
 
 export function validatePDF(file) {
-  if (!/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF file (.pdf).");
-  if (!file.size) throw new Error("This PDF is empty. Choose a file with content.");
+  if (!/\.pdf$/i.test(file.name)) throw new Error("Select a PDF file (.pdf).");
+  if (!file.size) throw new Error("This PDF is empty. Select a file with content.");
   if (file.size > MAX_PDF_BYTES) throw new Error("This PDF exceeds 50 MB. Split it into smaller PDFs and try again.");
 }
 

@@ -2,8 +2,8 @@
 
 ## Web app
 
-A static browser app with two tools, selected from the top navigation:
-**Image name converter** and **PDF to Excel**. All file processing happens on
+A static browser app with three tools, selected from the top navigation:
+**Image name converter**, **PDF to Excel**, and **Hamrick’s PO to 940**. All file processing happens on
 the user's device. No files are uploaded and no installation is required.
 Switching tools keeps the current selections and work in memory; reloading the
 page clears them.
@@ -124,22 +124,92 @@ lines per PDF. PDF-to-Excel uses a standard file picker and does not require the
 image tool's folder-access API. Use a current desktop browser. Keep the tab open
 while processing or preparing downloads.
 
+### Hamrick’s PO to 940
+
+Open **Hamrick’s PO to 940** (or `/#hamricks-po-to-940`) and select or drop one
+`.xls`, `.xlsx`, or `.xlsm` purchase order. Select a worksheet when the workbook
+contains several. Review all stores, then select **Download CSV** to
+download the complete selected worksheet. The preview shows all populated rows
+without pagination or blank spacer rows. Preview and downloads always include
+every store with nonzero item quantities in that worksheet.
+Large previews render the rows near the scroll position to stay responsive;
+scrolling still reaches every row, and CSV export always uses the complete data.
+
+The converter builds the 940 template using these rules:
+
+- Detect `CORRECTED STYLE#`, `Style Number`, and positive `Store i` headings,
+  either on one row or split over two adjacent rows. Header and PO-label searches
+  ignore capitalization and extra whitespace. Prefer `CORRECTED STYLE#` for item
+  Facility values; use the same row's `Style Number` when the corrected column
+  is missing or its value is blank. Skip rows with neither value. At least one
+  style column is required. Preserve identifiers' original casing and leading
+  zeros, and keep duplicate styles as separate source rows.
+- Process store columns from left to right, including nonconsecutive store numbers.
+  Preserve source order for each store's styles. Ignore columns that are not stores.
+- Emit the 29 specified 940 column headings. Each store gets an `H` header with
+  facility `RED`, priority `A`, and company `HAMRICK'S`.
+- Find the first cell containing the substring `PO`, ignoring capitalization,
+  by scanning rows from top to bottom and cells from left to right. Take the
+  first nonblank cell to its right on the same row as the Customer PO. Preserve
+  formatted leading zeros. Reference is `PO-i`, with at least two digits for
+  the store number.
+- Use the **PO-number cell** as the anchor: Ship to Contact name comes from one
+  row below it, Ship Date from four rows below it, and Cancel Date from five rows
+  below it, all in the same column. Export dates as `yyyymmdd`. Excel serial dates
+  respect the workbook's 1900 or 1904 date system. Text dates support `YYYY-MM-DD`,
+  `YYYY/MM/DD`, `YYYYMMDD`, `MM/DD/YYYY`, and `D-MMM-YYYY`, including two-digit
+  years for the last two formats (00–29 mean 2000–2029; 30–99 mean 1930–1999).
+- Fill Ship to Address 1 with `742 Peachoid Road`, Address2 with `Store i Gaffney`
+  (using the same padded store number as Reference), City with `Gaffney`, State
+  with `SC`, Postal Code with `29341`, Country with `USA`, Shipment Type with `L`,
+  Carrier with `CITY`, and Shipment Terms with `COL`. Leave Third Party Account #
+  through Bill to Country inclusive empty.
+- Emit consecutive item rows with `L`, style, nonzero quantity, and `EA`.
+  Skip blank/zero allocations and omit stores with no entries, including their
+  subheaders. Do not emit blank spacer rows. A worksheet with no entries produces
+  only the column headings. Signed entries that sum to zero are still retained.
+
+CSV uses 29 fields per row, quoted commas/newlines, and CRLF line endings.
+No empty rows or empty store orders are emitted. Formula-looking source values
+must be reviewed before CSV export; the converter does not silently change them.
+
+Parsing happens in a local worker and can be stopped. Missing or ambiguous
+headings, missing PO labels or values, missing/invalid shipping dates, invalid
+quantities, Excel error cells, and formulas without saved results produce actionable errors.
+Macros are never executed or retained in exports. Formula results are read from
+the saved workbook; recalculate and save in Excel first if formulas have changed. Nonmatching worksheets
+show their own errors while valid worksheets remain available.
+Stop and the 60-second deadline cover both the initial file read and parsing.
+Incomplete XLSX/XLSM containers are rejected before entering the Excel parser, and a
+failed or stopped read can be retried immediately.
+
+Limits: 25 MB per workbook, 30 worksheets, 300 rows and 300 columns per
+worksheet, and 100,000 generated rows per
+workbook. Excel `.xls`, `.xlsx`, and `.xlsm` files are supported; encrypted, damaged,
+or text files renamed to `.xls` must be resaved in Excel.
+
+SheetJS CE 0.20.3 and its legacy codepage support are bundled locally with their
+license in `web/vendor/sheetjs/`. Customer samples and generated outputs are not
+included in the repository. All committed Hamrick’s tests use synthetic data.
+
 ### Run locally
 
 From this repository:
 
 ```bash
-python3 -m http.server 4173 --bind 127.0.0.1 --directory web
+python3 serve.py
 ```
 
 On Windows, use `py` instead of `python3` if needed. Open
-`http://127.0.0.1:4173/` in Chrome or Edge. Opening `index.html` directly as a
+`http://127.0.0.1:4173/` in Chrome or Edge. The development server disables caching
+for the page, scripts, and workers; reload the page after changing the code.
+`npm start` runs the same server. Opening `index.html` directly as a
 `file://` URL is not supported. Production hosting must use HTTPS.
 
 ### Develop and test
 
-The browser app has no build step or package-install requirement. PDF.js and
-JSZip are served locally from `web/vendor/`. Tests require Node.js
+The browser app has no build step or package-install requirement. PDF.js,
+JSZip, and SheetJS are served locally from `web/vendor/`. Tests require Node.js
 22+ and Python 3.9–3.12 (`python3` on PATH, or set `PYTHON` to its executable).
 
 ```bash
@@ -156,12 +226,32 @@ npm test
 - `web/pdf-reader.js` — PDF.js text positioning, limits, progress, and cancellation.
 - `web/excel-export.js` — typed XLSX output and batch ZIP downloads.
 - `web/pdf-app.js` — PDF selection, per-file status, preview, and downloads.
+- `web/hamricks-converter.js` — store/style detection, 940 template rules, and CSV output.
+- `web/hamricks-reader.js` and `web/hamricks-worker.js` — local Excel parsing and validation.
+- `web/hamricks-zip.js` — ZIP bounds checks and compatibility with streamed entries.
+- `web/hamricks-file.js` — cancellable file reads, worker cleanup, and a shared timeout.
+- `web/hamricks-preview.js` — cached previews with bounded rendering for large worksheets.
+- `web/hamricks-export.js` — typed 940 Excel output for programmatic use and validation.
+- `web/hamricks-app.js` — workbook selection, worksheet/store previews, and downloads.
 - `web/index.html` and `web/styles.css` — interface and responsive styling.
+- [Shared interface conventions](docs/ui-conventions.md) — typography, spacing,
+  reusable controls, and wording rules for all tabs.
 - `tests/` — Python parity checks and filesystem integration tests using temporary
   files, including disk-write failures, cancellation, and source preservation.
 - `tests/aafes.test.mjs` — AAFES parser regressions, original-script fixture
   parity, input validation, and independent ZIP/XML checks of Excel output.
   All PDF fixtures are synthetic. See `tests/fixtures/README.md` for provenance.
+- `tests/hamricks.test.mjs` — synthetic XLS/XLSX/XLSM inputs, ignored VBA data,
+  PO and shipping metadata, date systems, store allocation, blank rows,
+  CSV escaping, and typed Excel output.
+- `tests/hamricks-reliability.test.mjs` — truncated and malformed archives,
+  file/worker failures, cancellation, timeout, retry, and preview window boundaries.
+- `tests/hamricks-preview.test.mjs` — preview reuse, complete scrolling, worksheet
+  changes, clearing, text resizing, and browser API fallbacks.
+
+Hamrick’s regression fixtures are generated in memory. Stress-test inputs,
+downloads, screenshots, and reports belong in an OS temporary directory outside
+the repository.
 
 The snapshot and complete rename plan are prepared before an output directory is
 created, preventing recursive self-copying. Large files are streamed; only file
