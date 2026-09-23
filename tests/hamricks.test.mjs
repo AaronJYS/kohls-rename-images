@@ -118,12 +118,12 @@ test("new aliases preserve corrected-style precedence, fallback, and repeated he
     ["StyleNumber", "CorrectStyle#", "Store12"],
     ["Original-1", "Corrected.bK", 2], ["Fallback-002.rD", "", 3],
     [" STYLE NUMBER ", "corrected STYLE #", " Store 12 "],
-    ["Original-3", "Another.nV", 4],
+    ["Original-3", "Updated.nV", 4],
   ]);
   assert.equal(result.styleColumn, 1);
   assert.equal(result.styleCount, 3);
   assert.deepEqual(result.rows.slice(2).map(row => row.slice(0, 4)), [
-    ["L", "Corrected.bK", 2, "EA"], ["L", "Fallback-002.rD", 3, "EA"], ["L", "Another.nV", 4, "EA"],
+    ["L", "Corrected.bK", 2, "EA"], ["L", "Fallback-002.rD", 3, "EA"], ["L", "Updated.nV", 4, "EA"],
   ]);
   for (const headers of [
     ["CorrectStyle#", "Corrected Style#", "Store12"],
@@ -180,6 +180,42 @@ test("corrected styles take precedence and blank corrected cells fall back to th
   }
 });
 
+test("no and change substrings in corrected values fall back without changing original identifiers", () => {
+  const values = ["no", "NO", "nO", "nO ChAnGe", "change", "CHANGE", "cHaNgE", "unchanged", "SNOW-001", "Another.nV",
+    "EXCHANGE-2", "", " \t ", null, undefined, { t: "str", f: '"NO"', v: "No" }];
+  const originals = values.map((_, i) => i ? `NO-Change-${i}.bK` : { t: "n", v: 7, w: "000007" });
+  const expected = originals.map((value, i) => [i ? value : "000007", i + 1]);
+  for (const heading of ["CorrectStyle#", "CORRECTED STYLE#"]) {
+    const table = [["StyleNumber", heading, "Store1"], ...values.map((value, i) => [originals[i], value, i + 1])];
+    for (const input of [table, table.map(([original, corrected, quantity]) => [corrected, original, quantity])]) {
+      const result = convertTable(input);
+      assert.equal(result.styleCount, values.length);
+      assert.deepEqual(result.rows.slice(2).map(row => row.slice(1, 3)), expected);
+      const workbook = XLSX.read(create940CSV(result), { type: "string", raw: true });
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets.Sheet1, { header: 1 });
+      assert.deepEqual(rows.slice(2).map(row => row.slice(1, 3)), expected.map(([style, quantity]) => [style, String(quantity)]));
+    }
+  }
+  const originalOnly = convertTable([["StyleNumber", "Store1"], ["NO-CHANGE.bK", 2]]);
+  assert.deepEqual(originalOnly.rows[2].slice(0, 4), ["L", "NO-CHANGE.bK", 2, "EA"]);
+});
+
+test("corrected placeholders with no usable fallback are skipped instead of exported as styles", () => {
+  for (const table of [
+    [["CorrectStyle#", "Store1"], ["NO", 900], ["change", 800], ["", 700], ["Kept.bK", 2]],
+    [["StyleNumber", "CorrectedStyle#", "Store1"], ["", "NO", 900], [null, "change", 800],
+      [undefined, "", 700], ["Kept.bK", "nO ChAnGe", 2]],
+  ]) {
+    const result = convertTable(table);
+    assert.equal(result.styleCount, 1);
+    assert.equal(result.totalQuantity, 2);
+    assert.deepEqual(result.rows.slice(2).map(row => row.slice(0, 4)), [["L", "Kept.bK", 2, "EA"]]);
+  }
+  for (const value of ["NO", "cHaNgE", ""]) {
+    assert.throws(() => convertTable([["CorrectStyle#", "Store1"], [value, 2]]), /no product rows/);
+  }
+});
+
 test("a missing corrected-style column falls back to case-insensitive, split, and repeated Style Number headings", () => {
   for (const heading of [
     [["STYLE NUMBER", "STORE 01"]],
@@ -195,9 +231,12 @@ test("a missing corrected-style column falls back to case-insensitive, split, an
 
 test("style fallback does not hide errors or uncached formulas in the selected source", () => {
   const heading = ["Style Number", "CORRECTED STYLE#", "Store 1"];
-  for (const cell of [{ t: "e", v: 23, w: "#REF!" }, { t: "str", f: "A1" }]) {
+  for (const cell of [{ t: "e", v: 23, w: "#REF!" }, { t: "str", f: "A1" },
+    { t: "e", v: 23, w: "NO" }, { t: "str", f: "A1", w: "No Change" }]) {
     assert.throws(() => convertTable([heading, ["Original", cell, 2]]), /Cell B9/);
-    assert.throws(() => convertTable([heading, [cell, "", 2]]), /Cell A9/);
+    for (const value of ["", "NO", "Change"]) {
+      assert.throws(() => convertTable([heading, [cell, value, 2]]), /Cell A9/);
+    }
     const result = convertTable([heading, [cell, "Corrected.bK", 2]]);
     assert.deepEqual(result.rows[2].slice(0, 4), ["L", "Corrected.bK", 2, "EA"]);
   }
@@ -400,6 +439,7 @@ test("XLS, XLSX, and XLSM readers handle split headings and preserve formatted i
       [["Style Number", "Store 1"], [{ t: "n", v: 7, z: "000000" }, 2]],
       [[" stylenumber ", "cOrReCtStYlE #", "sToRe01"], [{ t: "n", v: 7, z: "000000" }, "", 2]],
       [["CorrectedStyle#", "Store"], ["", " 01 "], [{ t: "n", v: 7, z: "000000" }, 2]],
+      [["StyleNumber", "CorrectStyle#", "Store1"], [{ t: "n", v: 7, z: "000000" }, "nO cHaNgE", 2]],
     ]) {
       const fallback = readHamricksWorkbook(workbookBytes([["PO", withDetails(table)]], bookType));
       assert.equal(fallback.sheets[0].error, undefined);

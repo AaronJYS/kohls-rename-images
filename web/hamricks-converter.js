@@ -170,6 +170,7 @@ export function parseHamricksSheet(rows, { date1904 = false } = {}) {
       const cell = rows[row]?.[column];
       checkedValue(cell, row, column);
       style = text(cell);
+      if (column === header.correctedStyleColumn && /no|change/i.test(style)) style = "";
       if (style) break;
     }
     if (!style) continue;

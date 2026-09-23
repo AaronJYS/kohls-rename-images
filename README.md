@@ -144,8 +144,10 @@ The converter builds the 940 template using these rules:
   and `Store12` also match. Headings must match the entire cell after trimming;
   a split store number must be in the cell directly below `Store`.
   Prefer the corrected-style column for item Facility values; use the same row's
-  `Style Number` when the corrected column is missing or its value is blank.
-  Skip rows with neither value. At least one style column is required. Preserve
+  `Style Number` when the corrected column is missing, its value is blank, or its
+  value contains `no` or `change`, ignoring capitalization. These are substring
+  checks, including inside longer words, and apply only to corrected-style values.
+  Skip rows with no usable style value. At least one style column is required. Preserve
   identifiers' original casing and leading zeros, and keep duplicate styles as
   separate source rows.
 - Process store columns from left to right, including nonconsecutive store numbers.
