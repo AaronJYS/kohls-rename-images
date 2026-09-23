@@ -13,7 +13,7 @@ const withDetails = (table, { po = "001234", contact = "Example department", shi
   const rows = Array.from({ length: labelRow + 7 }, () => []);
   for (const [offset, label, value] of [[0, "PO#  >", po], [1, "Department Number >", contact],
     [4, "Start Ship Date >", ship], [5, "Cancel Date >", cancel]]) {
-    rows[labelRow + offset][labelColumn] = label;
+    rows[labelRow + offset][offset ? valueColumn - 1 : labelColumn] = label;
     rows[labelRow + offset][valueColumn] = value;
   }
   return [...rows, ...table];
@@ -303,6 +303,95 @@ test("PO lookup selects the topmost match and then the leftmost, ignoring later 
     ["004321", "004321-01", "First department", "20270405", "20270409"]);
 });
 
+test("PO details follow case-insensitive substring labels below the PO in the adjacent column", () => {
+  const input = withDetails([["StyleNumber", "Store1", "Store12"], ["Item.bK", 2, 3]], {
+    labelRow: 2, labelColumn: 0, valueColumn: 4,
+  });
+  for (const row of [3, 6, 7]) input[row] = ["Unrelated", "", "", "", "Old fixed-position value"];
+  input[4] = ["Department ship cancel", "Wrong column"];
+  input[5] = ["", "", "", "Requested CANCELLATION date:", "2028-03-07"];
+  input[12] = ["", "", "", "Receiving dEpArTmEnT name:", { t: "n", v: 42, w: "000042" }];
+  input[17] = ["", "", "", "Planned SHIPMENT date:", "29-Feb-28"];
+  const result = convertHamricksSheet(input);
+  assert.deepEqual(result.rows.filter(row => row[0] === "H").map(row => [row[2], row[6], row[27], row[28]]), [
+    ["001234", "000042", "20280229", "20280307"], ["001234", "000042", "20280229", "20280307"],
+  ]);
+  for (const value of ["not a date", { t: "n", f: "A1" }, { t: "e", v: 23 }]) {
+    input[17][4] = value;
+    assert.throws(() => convertHamricksSheet(input), /Cell E18/);
+  }
+});
+
+test("PO detail matches replace earlier values until complete and ignore all later labels", () => {
+  const input = [
+    ["PO", "001234"],
+    ["Department", "First department"],
+    ["Ship", "not a date"],
+    ["DEPARTMENT", " "],
+    ["SHIP", 0],
+    ["Cancel", "2027-04-09"],
+    ["Department", "Final MiXeD department"],
+    ["Ship", "2027-04-05"],
+    ["Cancel", { t: "e", v: 23 }],
+    ["Department", "Too late"],
+    ["StyleNumber", "Store1"], ["Item.bK", 2],
+  ];
+  const header = convertHamricksSheet(input).rows[1];
+  assert.deepEqual([header[6], header[27], header[28]], ["Final MiXeD department", "20270405", "20270409"]);
+});
+
+test("PO detail lookup requires all three adjacent labels and a nonempty department", () => {
+  const table = [["StyleNumber", "Store1"], ["Item.bK", 2]];
+  for (const row of [1, 4, 5]) {
+    const input = withDetails(table);
+    input[row][0] = input[row][1];
+    input[row][1] = "Unrelated label";
+    assert.throws(() => convertHamricksSheet(input), /exceeded row index 300.*labels in column B and values in column C/);
+  }
+  for (const contact of ["", " \t ", null, undefined]) {
+    const input = withDetails(table);
+    input[1][2] = contact;
+    assert.throws(() => convertHamricksSheet(input), /exceeded row index 300/);
+  }
+  assert.equal(convertTable(table, { contact: 0 }).rows[1][6], "0");
+  const above = withDetails(table, { labelRow: 2, valueColumn: 1, po: "2027-04-05" });
+  above[0] = ["Department ship cancel", "2027-04-05"];
+  above[2][0] = "PO department ship cancel";
+  for (const row of [3, 6, 7]) above[row] = [];
+  assert.throws(() => convertHamricksSheet(above), /exceeded row index 300/);
+});
+
+test("blank or zero PO dates keep the search open, including zero in the 1904 date system", () => {
+  const table = [["StyleNumber", "Store1"], ["Item.bK", 2]];
+  for (const row of [4, 5]) for (const value of ["", " \t ", null, undefined, 0, " 0 ", { t: "n", v: 0, w: "1/1/1904" }]) {
+    const input = withDetails(table);
+    input[row][2] = value;
+    for (const date1904 of [false, true]) {
+      assert.throws(() => convertHamricksSheet(input, { date1904 }), /exceeded row index 300/);
+    }
+    input[10] = ["", row === 4 ? "SHIP" : "CANCEL", "2028-02-29"];
+    assert.equal(convertHamricksSheet(input).rows[1][row === 4 ? 27 : 28], "20280229");
+  }
+});
+
+test("a PO detail label can match department, ship, and cancel independently", () => {
+  const input = [["PO", "001234"], ["Department, SHIP, and cancel", "2027-04-05"],
+    ["StyleNumber", "Store1"], ["Item.bK", 2]];
+  const header = convertHamricksSheet(input).rows[1];
+  assert.deepEqual([header[6], header[27], header[28]], ["2027-04-05", "20270405", "20270405"]);
+});
+
+test("PO detail search checks x greater than 300 before accepting completion", () => {
+  const input = [["PO", "", "001234"], ["StyleNumber", "Store1"], ["Item.bK", 2]];
+  input[298] = ["", "Department", "Last department"];
+  input[299] = ["", "Ship", "2027-04-05"];
+  input[300] = ["", "Cancel", "2027-04-09"];
+  assert.equal(convertHamricksSheet(input).rows[1][28], "20270409");
+  input[301] = input[300];
+  input[300] = [];
+  assert.throws(() => convertHamricksSheet(input), /exceeded row index 300/);
+});
+
 test("shipping dates support Excel serials and explicit text formats without rolling invalid days forward", () => {
   for (const [ship, expected] of [
     [1, "19000101"], [59, "19000228"], [61, "19000301"],
@@ -314,20 +403,21 @@ test("shipping dates support Excel serials and explicit text formats without rol
     const result = convertTable([["CORRECTED STYLE#", "Store 1"], ["A", 2]], { ship, cancel: ship });
     assert.deepEqual(result.rows[1].slice(27), [expected, expected]);
   }
-  for (const ship of ["", null, false, NaN, Infinity, -1, 0, 60, 60.5, 9999999, "2027-02-29", "2028-02-30", "13/01/2028", "soon"]) {
+  for (const ship of [false, NaN, Infinity, -1, 60, 60.5, 9999999, "2027-02-29", "2028-02-30", "13/01/2028", "soon"]) {
     assert.throws(() => convertTable([["CORRECTED STYLE#", "Store 1"], ["A", 2]], { ship }), /Cell C5.*valid ship date/);
   }
   assert.throws(() => convertTable([["CORRECTED STYLE#", "Store 1"], ["A", 2]], { cancel: "2028-04-31" }), /Cell C6.*valid cancel date/);
 });
 
-test("XLS, XLSX, and XLSM preserve merged PO labels, formatted PO identifiers, and both Excel date systems", () => {
+test("XLS, XLSX, and XLSM preserve shifted PO details, merged labels, formatted identifiers, and both date systems", () => {
   for (const bookType of ["biff8", "xlsx", "xlsm"]) {
     for (const date1904 of [false, true]) {
       const input = withDetails([["CORRECTED STYLE#", "Store 5"], ["A", 2]], {
         valueColumn: 5, po: { t: "n", v: 42, z: "000000" },
-        ship: { t: "n", v: date1904 ? 0 : 1462, z: "d-mmm-yy" },
+        ship: { t: "n", v: date1904 ? 1 : 1463, z: "d-mmm-yy" },
         cancel: { t: "n", v: date1904 ? 59 : 1521, z: "m/d/yyyy" },
       });
+      [input[1], input[3], input[4], input[5], input[6]] = [input[4], input[5], [], [], input[1]];
       const sheet = XLSX.utils.aoa_to_sheet(input);
       sheet["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
       const workbook = XLSX.utils.book_new();
@@ -336,7 +426,7 @@ test("XLS, XLSX, and XLSM preserve merged PO labels, formatted PO identifiers, a
       const parsed = readHamricksWorkbook(XLSX.write(workbook, { type: "array", bookType }));
       assert.equal(parsed.sheets[0].error, undefined);
       const header = parsed.sheets[0].result.rows[1];
-      assert.deepEqual([header[2], header[4], ...header.slice(27)], ["000042", "000042-05", "19040101", "19040229"]);
+      assert.deepEqual([header[2], header[4], ...header.slice(27)], ["000042", "000042-05", "19040102", "19040229"]);
     }
   }
 });

@@ -159,10 +159,16 @@ The converter builds the 940 template using these rules:
   first nonblank cell to its right on the same row as the Customer PO. Preserve
   formatted leading zeros. Reference is `PO-i`, with at least two digits for
   the store number.
-- Use the **PO-number cell** as the anchor: Ship to Contact name comes from one
-  row below it, Ship Date from four rows below it, and Cancel Date from five rows
-  below it, all in the same column. Export dates as `yyyymmdd`. Excel serial dates
-  respect the workbook's 1900 or 1904 date system. Text dates support `YYYY-MM-DD`,
+- Starting below the **PO-number cell**, scan downward for labels containing
+  `department`, `ship`, or `cancel`, ignoring capitalization. Labels must be one
+  column left of the PO value; read each value from the PO-value column on the
+  matching row. Department becomes Ship to Contact name. Stop once department is
+  nonempty and both date values are nonempty and nonzero. Repeated labels replace
+  earlier values until all three are populated. Throw an error if the scan's
+  zero-based row index `x` exceeds 300 before the completion check, following the
+  `input[x + 1]` scan. The workbook reader still permits at most 300 worksheet rows.
+  Export dates as `yyyymmdd`. Excel serial dates respect the workbook's 1900 or
+  1904 date system; a zero serial is treated as missing by this lookup. Text dates support `YYYY-MM-DD`,
   `YYYY/MM/DD`, `YYYYMMDD`, `MM/DD/YYYY`, and `D-MMM-YYYY`, including two-digit
   years for the last two formats (00–29 mean 2000–2029; 30–99 mean 1930–1999).
 - Fill Ship to Address 1 with `742 Peachoid Road`, Address2 with `Store i Gaffney`
