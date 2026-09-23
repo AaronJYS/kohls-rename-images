@@ -13,7 +13,7 @@ const withDetails = (table, { po = "001234", contact = "Example department", shi
   const rows = Array.from({ length: labelRow + 7 }, () => []);
   for (const [offset, label, value] of [[0, "PO#  >", po], [1, "Department Number >", contact],
     [4, "Start Ship Date >", ship], [5, "Cancel Date >", cancel]]) {
-    rows[labelRow + offset][offset ? valueColumn - 1 : labelColumn] = label;
+    rows[labelRow + offset][labelColumn] = label;
     rows[labelRow + offset][valueColumn] = value;
   }
   return [...rows, ...table];
@@ -303,15 +303,15 @@ test("PO lookup selects the topmost match and then the leftmost, ignoring later 
     ["004321", "004321-01", "First department", "20270405", "20270409"]);
 });
 
-test("PO details follow case-insensitive substring labels below the PO in the adjacent column", () => {
+test("PO details follow the first PO label's column and ignore labels beside the value column", () => {
   const input = withDetails([["StyleNumber", "Store1", "Store12"], ["Item.bK", 2, 3]], {
     labelRow: 2, labelColumn: 0, valueColumn: 4,
   });
   for (const row of [3, 6, 7]) input[row] = ["Unrelated", "", "", "", "Old fixed-position value"];
-  input[4] = ["Department ship cancel", "Wrong column"];
-  input[5] = ["", "", "", "Requested CANCELLATION date:", "2028-03-07"];
-  input[12] = ["", "", "", "Receiving dEpArTmEnT name:", { t: "n", v: 42, w: "000042" }];
-  input[17] = ["", "", "", "Planned SHIPMENT date:", "29-Feb-28"];
+  input[4] = ["", "", "", "Department ship cancel", "2001-01-01"];
+  input[5] = ["Requested CANCELLATION date:", "", "", "", "2028-03-07"];
+  input[12] = ["Receiving dEpArTmEnT name:", "", "", "", { t: "n", v: 42, w: "000042" }];
+  input[17] = ["Planned SHIPMENT date:", "", "", "", "29-Feb-28"];
   const result = convertHamricksSheet(input);
   assert.deepEqual(result.rows.filter(row => row[0] === "H").map(row => [row[2], row[6], row[27], row[28]]), [
     ["001234", "000042", "20280229", "20280307"], ["001234", "000042", "20280229", "20280307"],
@@ -340,13 +340,13 @@ test("PO detail matches replace earlier values until complete and ignore all lat
   assert.deepEqual([header[6], header[27], header[28]], ["Final MiXeD department", "20270405", "20270409"]);
 });
 
-test("PO detail lookup requires all three adjacent labels and a nonempty department", () => {
+test("PO detail lookup requires all three labels in the PO marker's column and a nonempty department", () => {
   const table = [["StyleNumber", "Store1"], ["Item.bK", 2]];
   for (const row of [1, 4, 5]) {
     const input = withDetails(table);
-    input[row][0] = input[row][1];
-    input[row][1] = "Unrelated label";
-    assert.throws(() => convertHamricksSheet(input), /exceeded row index 300.*labels in column B and values in column C/);
+    input[row][1] = input[row][0];
+    input[row][0] = "Unrelated label";
+    assert.throws(() => convertHamricksSheet(input), /exceeded row index 300.*labels in column A and values in column C/);
   }
   for (const contact of ["", " \t ", null, undefined]) {
     const input = withDetails(table);
@@ -369,7 +369,7 @@ test("blank or zero PO dates keep the search open, including zero in the 1904 da
     for (const date1904 of [false, true]) {
       assert.throws(() => convertHamricksSheet(input, { date1904 }), /exceeded row index 300/);
     }
-    input[10] = ["", row === 4 ? "SHIP" : "CANCEL", "2028-02-29"];
+    input[10] = [row === 4 ? "SHIP" : "CANCEL", "", "2028-02-29"];
     assert.equal(convertHamricksSheet(input).rows[1][row === 4 ? 27 : 28], "20280229");
   }
 });
@@ -383,9 +383,9 @@ test("a PO detail label can match department, ship, and cancel independently", (
 
 test("PO detail search checks x greater than 300 before accepting completion", () => {
   const input = [["PO", "", "001234"], ["StyleNumber", "Store1"], ["Item.bK", 2]];
-  input[298] = ["", "Department", "Last department"];
-  input[299] = ["", "Ship", "2027-04-05"];
-  input[300] = ["", "Cancel", "2027-04-09"];
+  input[298] = ["Department", "", "Last department"];
+  input[299] = ["Ship", "", "2027-04-05"];
+  input[300] = ["Cancel", "", "2027-04-09"];
   assert.equal(convertHamricksSheet(input).rows[1][28], "20270409");
   input[301] = input[300];
   input[300] = [];

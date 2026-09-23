@@ -159,9 +159,9 @@ The converter builds the 940 template using these rules:
   first nonblank cell to its right on the same row as the Customer PO. Preserve
   formatted leading zeros. Reference is `PO-i`, with at least two digits for
   the store number.
-- Starting below the **PO-number cell**, scan downward for labels containing
-  `department`, `ship`, or `cancel`, ignoring capitalization. Labels must be one
-  column left of the PO value; read each value from the PO-value column on the
+- Starting below the **first matching PO label**, scan downward in that label's
+  column for labels containing `department`, `ship`, or `cancel`, ignoring
+  capitalization. Read each value from the PO-value column on the
   matching row. Department becomes Ship to Contact name. Stop once department is
   nonempty and both date values are nonempty and nonzero. Repeated labels replace
   earlier values until all three are populated. Throw an error if the scan's

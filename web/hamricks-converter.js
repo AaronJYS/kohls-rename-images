@@ -113,7 +113,7 @@ function orderDetails(rows, date1904) {
       shipDate: date940(found.ship.cell, found.ship.row, column, "ship date", date1904),
       cancelDate: date940(found.cancel.cell, found.cancel.row, column, "cancel date", date1904),
     };
-    const nextRow = x + 1, name = label(rows[nextRow]?.[column - 1]);
+    const nextRow = x + 1, name = label(rows[nextRow]?.[labelColumn]);
     for (const field of fields) {
       if (!name.includes(field)) continue;
       const cell = rows[nextRow]?.[column];
@@ -122,7 +122,7 @@ function orderDetails(rows, date1904) {
       found[field] = token && (field === "department" || token !== "0") ? { cell, row: nextRow } : null;
     }
   }
-  throw new Error(`The PO detail search exceeded row index 300. Find a nonempty department and nonzero ship and cancel dates below the PO, with labels in column ${columnName(column - 1)} and values in column ${columnName(column)}.`);
+  throw new Error(`The PO detail search exceeded row index 300. Find a nonempty department and nonzero ship and cancel dates below the PO, with labels in column ${columnName(labelColumn)} and values in column ${columnName(column)}.`);
 }
 
 function headerAt(rows, row) {
