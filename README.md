@@ -137,13 +137,17 @@ scrolling still reaches every row, and CSV export always uses the complete data.
 
 The converter builds the 940 template using these rules:
 
-- Detect `CORRECTED STYLE#`, `Style Number`, and positive `Store i` headings,
-  either on one row or split over two adjacent rows. Header and PO-label searches
-  ignore capitalization and extra whitespace. Prefer `CORRECTED STYLE#` for item
-  Facility values; use the same row's `Style Number` when the corrected column
-  is missing or its value is blank. Skip rows with neither value. At least one
-  style column is required. Preserve identifiers' original casing and leading
-  zeros, and keep duplicate styles as separate source rows.
+- Detect `CORRECTED STYLE#` or `CORRECT STYLE#`, `Style Number`, and positive
+  `Store i` headings, either on one row or split over two adjacent rows. Header
+  and PO-label searches ignore capitalization and extra whitespace. Spaces between
+  heading parts are optional: `CorrectStyle#`, `CorrectedStyle #`, `StyleNumber`,
+  and `Store12` also match. Headings must match the entire cell after trimming;
+  a split store number must be in the cell directly below `Store`.
+  Prefer the corrected-style column for item Facility values; use the same row's
+  `Style Number` when the corrected column is missing or its value is blank.
+  Skip rows with neither value. At least one style column is required. Preserve
+  identifiers' original casing and leading zeros, and keep duplicate styles as
+  separate source rows.
 - Process store columns from left to right, including nonconsecutive store numbers.
   Preserve source order for each store's styles. Ignore columns that are not stores.
 - Emit the 29 specified 940 column headings. Each store gets an `H` header with

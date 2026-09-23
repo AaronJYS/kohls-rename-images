@@ -16,7 +16,7 @@ const raw = (cell) => cell && typeof cell === "object" ? cell.v : cell;
 const text = (cell) => String(cell && typeof cell === "object" ? cell.w ?? cell.v ?? "" : cell ?? "").trim();
 // Normalize only lookup labels; source identifiers keep their original casing.
 const label = (cell) => text(cell).replace(/\s+/g, " ").toLowerCase();
-const styleHeader = (name) => /^corrected style\s*#$/.test(name) ? "corrected" : name === "style number" ? "original" : null;
+const styleHeader = (name) => /^correct(?:ed)? ?style ?#$/.test(name) ? "corrected" : /^style ?number$/.test(name) ? "original" : null;
 
 export function validateHamricksFile(file) {
   if (!/\.xls[xm]?$/i.test(file.name)) throw new Error("Select an Excel .xls, .xlsx, or .xlsm workbook.");
@@ -126,7 +126,7 @@ function headerAt(rows, row) {
       styles[singleStyle || splitStyle].push(column);
       if (splitStyle) depth = 2;
     }
-    const inline = /^store\s+(\d+)$/.exec(name);
+    const inline = /^store ?(\d+)$/.exec(name);
     const split = name === "store" && /^\d+$/.test(text(next[column]));
     if (!inline && !split) continue;
     const number = Number(inline ? inline[1] : text(next[column]));
@@ -135,7 +135,7 @@ function headerAt(rows, row) {
     if (split) depth = 2;
   }
   if (!(styles.corrected.length || styles.original.length) || !stores.length) return null;
-  if (styles.corrected.length > 1) throw new Error(`Row ${row + 1} contains more than one CORRECTED STYLE# column.`);
+  if (styles.corrected.length > 1) throw new Error(`Row ${row + 1} contains more than one corrected-style column (CORRECTED STYLE# or CORRECT STYLE#).`);
   if (styles.original.length > 1) throw new Error(`Row ${row + 1} contains more than one Style Number column.`);
   const numbers = new Set();
   for (const store of stores) {
@@ -152,7 +152,7 @@ function headerAt(rows, row) {
 export function parseHamricksSheet(rows, { date1904 = false } = {}) {
   let header;
   for (let row = 0; row < rows.length && !header; row++) header = headerAt(rows, row);
-  if (!header) throw new Error("Could not find CORRECTED STYLE# or Style Number together with Store i columns. Headings may occupy one row or two adjacent rows.");
+  if (!header) throw new Error("Could not find CORRECTED STYLE#, CORRECT STYLE#, or Style Number together with Store i columns. Headings may occupy one row or two adjacent rows.");
   const styleColumns = [header.correctedStyleColumn, header.styleNumberColumn].filter(column => column !== undefined);
   const styles = [];
   for (let row = header.row + header.depth; row < rows.length; row++) {
@@ -176,7 +176,7 @@ export function parseHamricksSheet(rows, { date1904 = false } = {}) {
     if (style.length > 32767) throw new Error(`Style at row ${row + 1} is too long for Excel.`);
     styles.push({ row, style, quantities: header.stores.map(({ column }) => quantity(rows[row]?.[column], row, column)) });
   }
-  if (!styles.length) throw new Error("The worksheet contains no product rows with a CORRECTED STYLE# or Style Number below the headings.");
+  if (!styles.length) throw new Error("The worksheet contains no product rows with a style value below the headings.");
   const stores = header.stores.map((store, index) => ({
     ...store, lineCount: styles.filter(item => item.quantities[index] !== 0).length,
   }));

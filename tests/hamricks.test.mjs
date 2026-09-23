@@ -74,11 +74,83 @@ test("split and repeated corrected-style headers accept mixed case and wrapped l
     [["cOrReCtEd", "sToRe"], ["sTyLe #", 5]],
     [["cOrReCtEd StYlE", "StOrE 05"], ["#", ""]],
     [[" CoRrEcTeD\nStYlE# ", "StOrE"], ["", 5]],
+    [[" cOrReCt ", "sToRe"], ["sTyLe#", " 05 "]],
+    [["CoRrEcTsTyLe", "sToRe05"], [" # ", ""]],
   ]) {
     const result = convertTable([...heading, ["First.bK", 2], ...heading, ["Second.rD", 3]]);
     assert.equal(result.styleCount, 2);
     assert.deepEqual(result.rows.slice(2).map(row => row.slice(0, 4)), [["L", "First.bK", 2, "EA"], ["L", "Second.rD", 3, "EA"]]);
   }
+});
+
+test("style headings accept optional spaces and both correct-style aliases without changing source values", () => {
+  const product = ["MiXeD-001.bK", 3];
+  const expected = convertTable([["Style Number", "Store 12"], product]);
+  for (const heading of ["StyleNumber", "Style Number", "CorrectStyle#", "Correct Style#", "CorrectStyle #",
+    "Correct Style #", "CorrectedStyle#", "Corrected Style#", "CorrectedStyle #", "Corrected Style #"]) {
+    for (const name of [heading, heading.toLowerCase(), heading.toUpperCase()]) {
+      for (const before of ["", " "]) for (const after of ["", " "]) {
+        const result = convertTable([[before + name + after, "Store 12"], product]);
+        assert.deepEqual(result.rows, expected.rows, JSON.stringify(before + name + after));
+      }
+    }
+  }
+});
+
+test("store headings accept optional spaces inline and around numbers directly below Store", () => {
+  const expected = convertTable([["Style Number", "Store 12"], ["Mixed.bK", 3]]);
+  for (const heading of ["Store12", "Store 12", "store012", "STORE 012", "sToRe12", "sToRe 012"]) {
+    for (const before of ["", " "]) for (const after of ["", " "]) {
+      const result = convertTable([["Style Number", before + heading + after], ["Mixed.bK", 3]]);
+      assert.deepEqual(result.rows, expected.rows, JSON.stringify(before + heading + after));
+    }
+  }
+  for (const heading of ["Store", " store ", " STORE ", " sToRe "]) {
+    for (const number of [12, "12", " 12", "12 ", " 012 "]) {
+      const result = convertTable([["StyleNumber", heading], ["", number], ["Mixed.bK", 3]]);
+      assert.deepEqual(result.rows, expected.rows);
+    }
+  }
+});
+
+test("new aliases preserve corrected-style precedence, fallback, and repeated heading detection", () => {
+  const result = convertTable([
+    ["StyleNumber", "CorrectStyle#", "Store12"],
+    ["Original-1", "Corrected.bK", 2], ["Fallback-002.rD", "", 3],
+    [" STYLE NUMBER ", "corrected STYLE #", " Store 12 "],
+    ["Original-3", "Another.nV", 4],
+  ]);
+  assert.equal(result.styleColumn, 1);
+  assert.equal(result.styleCount, 3);
+  assert.deepEqual(result.rows.slice(2).map(row => row.slice(0, 4)), [
+    ["L", "Corrected.bK", 2, "EA"], ["L", "Fallback-002.rD", 3, "EA"], ["L", "Another.nV", 4, "EA"],
+  ]);
+  for (const headers of [
+    ["CorrectStyle#", "Corrected Style#", "Store12"],
+    ["StyleNumber", "Style Number", "Store12"],
+    ["CorrectStyle#", "Store12", "Store 012"],
+  ]) assert.throws(() => convertTable([headers, ["A", "B", 2]]), /more than one/);
+  assert.throws(() => convertTable([
+    ["CorrectStyle#", "Store12"], ["A", 2], ["Corrected Style#", "Store13"], ["B", 3],
+  ]), /layout changes/);
+});
+
+test("optional heading spaces do not allow extra words, punctuation, or nonpositive store numbers", () => {
+  for (const heading of ["OldStyleNumber", "StyleNumber notes", "Style_Number", "Style-Number", "Style Number#",
+    "CorrectStyle", "CorrectedStyle", "IncorrectStyle#", "Correct_Style#", "CorrectStyle-#", "CorrectStyle##", "CorrectedStyle# notes"]) {
+    assert.throws(() => convertTable([[heading, "Store12"], ["A", 2]]), /Could not find/, heading);
+  }
+  for (const heading of ["OldStore12", "Store12 notes", "Store_12", "Store #12", "Store-12", "Store+12",
+    "Store1.2", "Store1e2", "Store1,000", "Store1 2", "Store0", "Store 000", "Store9007199254740992"]) {
+    assert.throws(() => convertTable([["StyleNumber", heading], ["A", 2]]), /Could not find/, heading);
+  }
+  for (const number of ["Number 12", "12 notes", "1 2", "-12", "+12", "1.2", 0]) {
+    assert.throws(() => convertTable([["StyleNumber", "Store"], ["", number], ["A", 2]]), /Could not find/);
+  }
+  for (const table of [
+    [["StyleNumber", "Store", 12], ["A", "", 2]],
+    [["StyleNumber", "Store"], [], ["", 12], ["A", 2]],
+  ]) assert.throws(() => convertTable(table), /Could not find/);
 });
 
 test("corrected styles take precedence and blank corrected cells fall back to the same row's Style Number", () => {
@@ -266,7 +338,7 @@ test("repeated headings are skipped, but changed or duplicate column mappings fa
   assert.equal(convertTable(rows).styleCount, 2);
   assert.throws(() => convertHamricksSheet([...rows, ["CORRECTED STYLE#", "Store 2"], ["C", 4]]), /layout changes at row 5/);
   assert.throws(() => convertHamricksSheet([["CORRECTED STYLE#", "Store 1", "Store 01"], ["A", 1, 2]]), /more than one column/);
-  assert.throws(() => convertHamricksSheet([["CORRECTED STYLE#", "corrected style#", "Store 1"], ["A", "B", 2]]), /more than one CORRECTED STYLE#/);
+  assert.throws(() => convertHamricksSheet([["CORRECTED STYLE#", "corrected style#", "Store 1"], ["A", "B", 2]]), /more than one corrected-style column/);
   assert.throws(() => convertHamricksSheet([["Style Number", "style number", "Store 1"], ["A", "B", 2]]), /more than one Style Number/);
   assert.throws(() => convertTable([
     ["CORRECTED STYLE#", "Style Number", "", "Store 1"], ["A", "Old-A", "", 2],
@@ -326,6 +398,8 @@ test("XLS, XLSX, and XLSM readers handle split headings and preserve formatted i
     for (const table of [
       [["Style Number", "CORRECTED STYLE#", "Store 1"], [{ t: "n", v: 7, z: "000000" }, "", 2]],
       [["Style Number", "Store 1"], [{ t: "n", v: 7, z: "000000" }, 2]],
+      [[" stylenumber ", "cOrReCtStYlE #", "sToRe01"], [{ t: "n", v: 7, z: "000000" }, "", 2]],
+      [["CorrectedStyle#", "Store"], ["", " 01 "], [{ t: "n", v: 7, z: "000000" }, 2]],
     ]) {
       const fallback = readHamricksWorkbook(workbookBytes([["PO", withDetails(table)]], bookType));
       assert.equal(fallback.sheets[0].error, undefined);
