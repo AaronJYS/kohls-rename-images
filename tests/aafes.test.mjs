@@ -83,7 +83,7 @@ test("group totals keep fractional quantities exact and include zero and negativ
   ]);
 });
 
-test("SKU summaries omit missing identifiers and keep leading-zero SKUs distinct", async () => {
+test("SKU summaries keep leading-zero identifiers distinct and list POs even when SKUs are missing", async () => {
   const records = [
     { po: "001", sku: "0001", qty: 1, total_price: 10 },
     { po: "001", sku: "1", qty: 2, total_price: 20 },
@@ -96,11 +96,15 @@ test("SKU summaries omit missing identifiers and keep leading-zero SKUs distinct
   ]);
   const zip = await globalThis.JSZip.loadAsync(await createWorkbook(records));
   const summary = await zip.file("xl/worksheets/sheet2.xml").async("string");
-  assert.match(summary, /dimension ref="A1:D3"/);
+  assert.match(summary, /dimension ref="A1:F6"/);
   assert.deepEqual([...summary.matchAll(/<t xml:space="preserve">(.*?)<\/t>/g)].map((match) => match[1]),
-    ["SKU", "Total Qty", "Unit Price", "Total Price", "0001", "1"]);
+    ["SKU", "Total Qty", "Unit Price", "Total Price", "0001", "1", "All POs", "001", "002"]);
   const blanks = await globalThis.JSZip.loadAsync(await createWorkbook(records.slice(2)));
-  assert.match(await blanks.file("xl/worksheets/sheet2.xml").async("string"), /dimension ref="A1:D1"/);
+  const blankSummary = await blanks.file("xl/worksheets/sheet2.xml").async("string");
+  assert.match(blankSummary, /dimension ref="A1:F6"/);
+  assert.deepEqual([...blankSummary.matchAll(/<c r="F(\d+)"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)]
+    .map((match) => [Number(match[1]), match[2]]), [[4, "All POs"], [5, "001"], [6, "002"]]);
+  assert.doesNotMatch(blankSummary, /<c r="[A-E][2-9]/);
 });
 
 test("printed totals and numeric footers cannot replace calculated item or group prices", () => {
@@ -314,9 +318,9 @@ cells={c.attrib['r']:c for c in s.findall('.//s:c',ns)}
 detail_rows=s.findall('s:sheetData/s:row',ns)
 assert [int(row.attrib['r']) for row in detail_rows]==[1,2,3,4,5,6]
 assert [int(row.attrib['r']) for row in detail_rows if len(row)==0]==[5]
-assert s.find('s:dimension',ns).attrib['ref']=='A1:I6'
+assert s.find('s:dimension',ns).attrib['ref']=='A1:K6'
 detail_indices=[2,3,4,6]
-assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'SKU','Qty','Unit Price','Total Qty for same PO','Total Price for same PO','Requested Ship Date','Requested Delivery Date']
+assert [c.find('.//s:t',ns).text for c in s.find('s:sheetData/s:row',ns)]==['PO',"Vendor's Style",'SKU','Qty','Unit Price','Total Qty for same PO','Total Price for same PO','Total Qty for same SKU','Total Price for same SKU','Requested Ship Date','Requested Delivery Date']
 assert cells['A2'].attrib['t']=='inlineStr'
 assert cells['A2'].find('.//s:t',ns).text=='0069749254'
 assert cells['B2'].attrib['t']=='inlineStr'
@@ -332,16 +336,20 @@ assert int(cells['D2'].find('s:v',ns).text)==2
 assert float(cells['E2'].find('s:v',ns).text)==17.25
 assert [float(cells[f'F{i}'].find('s:v',ns).text) for i in detail_indices]==[1005,1005,1005,-1.5]
 assert [float(cells[f'G{i}'].find('s:v',ns).text) for i in detail_indices]==[17336.25,17336.25,17336.25,-25.88]
+assert [float(cells[f'H{i}'].find('s:v',ns).text) for i in detail_indices]==[0.5,3,1000,0.5]
+assert [float(cells[f'I{i}'].find('s:v',ns).text) for i in detail_indices]==[8.62,51.75,17250,8.62]
 assert float(cells['D6'].find('s:v',ns).text)==-1.5
-assert int(cells['H2'].find('s:v',ns).text)==46266
-assert int(cells['I2'].find('s:v',ns).text)==46274
+assert int(cells['J2'].find('s:v',ns).text)==46266
+assert int(cells['K2'].find('s:v',ns).text)==46274
 styles=E.fromstring(z.read('xl/styles.xml'))
 formats={f.attrib['numFmtId']:f.attrib['formatCode'] for f in styles.findall('s:numFmts/s:numFmt',ns)}
 xfs=styles.findall('s:cellXfs/s:xf',ns)
-assert formats[xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
-assert formats[xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['J2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
+assert formats[xfs[int(cells['K2'].attrib['s'])].attrib['numFmtId']]=='yyyy/mm/dd'
 assert xfs[int(cells['E2'].attrib['s'])].attrib['numFmtId']=='4'
 assert xfs[int(cells['G2'].attrib['s'])].attrib['numFmtId']=='4'
+assert xfs[int(cells['H2'].attrib['s'])].attrib['numFmtId']=='0'
+assert xfs[int(cells['I2'].attrib['s'])].attrib['numFmtId']=='4'
 assert xfs[int(cells['D6'].attrib['s'])].attrib['numFmtId']=='0'
 assert xfs[int(cells['F6'].attrib['s'])].attrib['numFmtId']=='0'
 assert s.find('s:autoFilter',ns) is None
@@ -351,21 +359,32 @@ rows=summary.findall('s:sheetData/s:row',ns)
 assert [c.find('.//s:t',ns).text for c in rows[0]]==['SKU','Total Qty','Unit Price','Total Price']
 values=[]
 for row in rows[1:]:
-    sku,qty,unit_price,price=row
+    sku_cells=[c for c in row if c.attrib['r'][0] in 'ABCD']
+    if not sku_cells: continue
+    sku,qty,unit_price,price=sku_cells
     assert sku.attrib['t']=='inlineStr'
     assert xfs[int(qty.attrib['s'])].attrib['numFmtId']=='0'
     assert xfs[int(unit_price.attrib['s'])].attrib['numFmtId']=='4'
     assert xfs[int(price.attrib['s'])].attrib['numFmtId']=='4'
     values.append([sku.find('.//s:t',ns).text,float(qty.find('s:v',ns).text),float(unit_price.find('s:v',ns).text),float(price.find('s:v',ns).text)])
 assert values==[['003278934',0.5,17.25,8.62],['000765432',3,17.25,51.75],['009999999',1000,17.25,17250]]
+summary_cells={c.attrib['r']:c for c in summary.findall('.//s:c',ns)}
+assert summary_cells['F4'].find('.//s:t',ns).text=='All POs'
+assert [summary_cells[f'F{i}'].find('.//s:t',ns).text for i in [5,6]]==['0069749254','0069749253']
+for i in [5,6]:
+    assert summary_cells[f'F{i}'].attrib['t']=='inlineStr'
+    assert xfs[int(summary_cells[f'F{i}'].attrib['s'])].attrib['numFmtId']=='49'
+assert not any(ref.startswith('E') for ref in summary_cells)
+assert not any(f'F{i}' in summary_cells for i in [1,2,3,7])
+assert len({row.attrib['r'] for row in rows})==len(rows)
 assert summary.find('.//s:f',ns) is None
-assert summary.find('s:dimension',ns).attrib['ref']=='A1:D4'
+assert summary.find('s:dimension',ns).attrib['ref']=='A1:F6'
 assert summary.find('s:autoFilter',ns) is None
 assert summary.find('.//s:pane',ns).attrib['state']=='frozen'
 print(json.dumps({'detailRows':len(s.findall('.//s:row',ns)),'summaryRows':len(rows)}))
 `], { input: bytes, maxBuffer: 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr.toString());
-  assert.deepEqual(JSON.parse(result.stdout), { detailRows: 6, summaryRows: 4 });
+  assert.deepEqual(JSON.parse(result.stdout), { detailRows: 6, summaryRows: 6 });
 });
 
 test("export preserves blank missing dates", async () => {
@@ -373,8 +392,8 @@ test("export preserves blank missing dates", async () => {
   const bytes = await createWorkbook([{ ...row, requested_ship: null, requested_del: null }]);
   const zip = await globalThis.JSZip.loadAsync(bytes);
   const sheet = await zip.file("xl/worksheets/sheet1.xml").async("string");
-  assert.match(sheet, /<c r="H2" s="1"\/>/);
-  assert.match(sheet, /<c r="I2" s="1"\/>/);
+  assert.match(sheet, /<c r="J2" s="1"\/>/);
+  assert.match(sheet, /<c r="K2" s="1"\/>/);
 });
 
 test("batch ZIP disambiguates filenames and preserves per-file totals, source order, and PO spacers", async () => {
@@ -383,7 +402,10 @@ test("batch ZIP disambiguates filenames and preserves per-file totals, source or
   // Return to an earlier PO after another group, with a new SKU in that later PO.
   const reordered = [
     laterPO, { ...laterPO, line_no: "00002", sku: "000000001" },
-    first, second, continuation, { ...laterPO, line_no: "00003" },
+    first, second, continuation,
+    { ...first, line_no: "00004", sku: "000000002" },
+    { ...first, line_no: "00005", sku: "000000003" },
+    { ...laterPO, line_no: "00003" },
   ];
   addGroupedTotals(reordered);
   const results = [
@@ -397,23 +419,30 @@ test("batch ZIP disambiguates filenames and preserves per-file totals, source or
   for (const [index, item] of Object.values(zip.files).entries()) {
     const workbook = await globalThis.JSZip.loadAsync(await item.async("uint8array"));
     const details = await workbook.file("xl/worksheets/sheet1.xml").async("string");
-    assert.ok(details.includes(`dimension ref="A1:I${[3, 2, 9][index]}"`));
+    assert.ok(details.includes(`dimension ref="A1:K${[3, 2, 11][index]}"`));
     assert.doesNotMatch(details, /<autoFilter\b/);
     const poCells = [...details.matchAll(/<c r="A(\d+)"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)]
       .slice(1).map((match) => [Number(match[1]), match[2]]);
     assert.deepEqual(poCells, [
       [[2, "0069749254"], [3, "0069749254"]],
       [[2, "0069749253"]],
-      [[2, "0069749253"], [3, "0069749253"], [5, "0069749254"], [6, "0069749254"], [7, "0069749254"], [9, "0069749253"]],
+      [[2, "0069749253"], [3, "0069749253"], [5, "0069749254"], [6, "0069749254"], [7, "0069749254"], [8, "0069749254"], [9, "0069749254"], [11, "0069749253"]],
     ][index]);
-    assert.deepEqual([...details.matchAll(/<row r="(\d+)"\/>/g)].map((match) => Number(match[1])), index === 2 ? [4, 8] : []);
+    assert.deepEqual([...details.matchAll(/<row r="(\d+)"\/>/g)].map((match) => Number(match[1])), index === 2 ? [4, 10] : []);
     const summary = await workbook.file("xl/worksheets/sheet2.xml").async("string");
     assert.doesNotMatch(summary, /<autoFilter\b|<row r="\d+"\/>/);
+    assert.ok(summary.includes(`dimension ref="A1:F${[5, 5, 7][index]}"`));
+    assert.deepEqual([...summary.matchAll(/<c r="F(\d+)"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)]
+      .map((match) => [Number(match[1]), match[2]]), [
+      [[4, "All POs"], [5, "0069749254"]],
+      [[4, "All POs"], [5, "0069749253"]],
+      [[4, "All POs"], [5, "0069749253"], [6, "0069749254"]],
+    ][index]);
     const totals = [...summary.matchAll(/<v>(.*?)<\/v>/g)].map((match) => Number(match[1]));
     assert.deepEqual(totals, [
       [2, 17.25, 34.5, 3, 17.25, 51.75],
       [-1, 17.25, -17.25],
-      [0, 17.25, 0, -1, 17.25, -17.25, 3, 17.25, 51.75, 1000, 17.25, 17250],
+      [0, 17.25, 0, -1, 17.25, -17.25, 3, 17.25, 51.75, 1000, 17.25, 17250, 2, 17.25, 34.5, 2, 17.25, 34.5],
     ][index]);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");

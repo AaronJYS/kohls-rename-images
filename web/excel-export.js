@@ -33,7 +33,7 @@ function columnName(index) {
   return String.fromCharCode(65 + index);
 }
 
-function worksheetXML(records, columns, separatePOs = false) {
+function worksheetXML(records, columns, { separatePOs = false, poList } = {}) {
   const widths = columns.map(([key, label]) => {
     let width = Math.max(10, label.length + 3);
     for (const row of records.slice(0, 1000)) {
@@ -41,6 +41,16 @@ function worksheetXML(records, columns, separatePOs = false) {
     }
     return width;
   });
+  // Keep one empty column between the SKU totals and the PO list.
+  const poColumn = poList ? columnName(columns.length + 1) : null;
+  if (poList) widths.push(10, poList.reduce((width, po) =>
+    Math.max(width, Math.min(45, String(po).length + 3)), 10));
+  const poListCell = (rowNumber) => {
+    if (!poList || rowNumber < 4 || rowNumber > poList.length + 4) return "";
+    return rowNumber === 4
+      ? textCell(`${poColumn}4`, "All POs", 0)
+      : textCell(`${poColumn}${rowNumber}`, poList[rowNumber - 5]);
+  };
   const header = `<row r="1">${columns.map(([, label], i) => textCell(`${columnName(i)}1`, label, 0)).join("")}</row>`;
   let rowNumber = 1;
   const rows = records.map((row, index) => {
@@ -61,10 +71,18 @@ function worksheetXML(records, columns, separatePOs = false) {
         throw new Error(`A value for PO ${row.po} exceeds Excel's cell limits. Shorten that individual value before exporting.`);
       // Inline strings preserve leading zeros and prevent formula injection.
       return textCell(ref, value);
-    }).join("")}</row>`;
-  }).join("");
-  const last = `${columnName(columns.length - 1)}${rowNumber}`;
-  return `${XML}<worksheet xmlns="${NS}"><dimension ref="A1:${last}"/><sheetViews><sheetView showGridLines="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join("")}</cols><sheetData>${header}${rows}</sheetData></worksheet>`;
+    }).join("")}${poListCell(rowNumber)}</row>`;
+  });
+  // The PO list can extend below the last SKU, or exist with no usable SKUs.
+  if (poList) {
+    while (rowNumber < poList.length + 4) {
+      rowNumber++;
+      const cell = poListCell(rowNumber);
+      if (cell) rows.push(`<row r="${rowNumber}">${cell}</row>`);
+    }
+  }
+  const last = `${columnName(widths.length - 1)}${rowNumber}`;
+  return `${XML}<worksheet xmlns="${NS}"><dimension ref="A1:${last}"/><sheetViews><sheetView showGridLines="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join("")}</cols><sheetData>${header}${rows.join("")}</sheetData></worksheet>`;
 }
 
 export function workbookParts(records) {
@@ -74,8 +92,9 @@ export function workbookParts(records) {
   // Extraction already totals SKUs across this PDF's POs. Export each total
   // once, in first-seen order, without grouping items whose SKU is missing.
   // A summary row must have one consistent unit price across matching items.
-  const skuRows = new Map();
+  const skuRows = new Map(), poValues = new Set();
   for (const row of records) {
+    if (row.po) poValues.add(row.po);
     if (!row.sku) continue;
     const first = skuRows.get(row.sku);
     if (first && first.price !== row.price)
@@ -84,7 +103,7 @@ export function workbookParts(records) {
   }
   const sheets = [
     { name: "Purchase Orders", rows: records, columns: COLUMNS, separatePOs: true },
-    { name: "Summary", rows: [...skuRows.values()], columns: SKU_COLUMNS },
+    { name: "Summary", rows: [...skuRows.values()], columns: SKU_COLUMNS, poList: [...poValues] },
   ];
   const parts = {
     "[Content_Types].xml": `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`,
@@ -93,7 +112,7 @@ export function workbookParts(records) {
     "xl/_rels/workbook.xml.rels": `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length + 1}" Type="${REL}/styles" Target="styles.xml"/></Relationships>`,
     "xl/styles.xml": `${XML}<styleSheet xmlns="${NS}"><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy/mm/dd"/></numFmts><fonts count="1"><font><sz val="11"/><color auto="1"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
   };
-  sheets.forEach((sheet, i) => { parts[`xl/worksheets/sheet${i + 1}.xml`] = worksheetXML(sheet.rows, sheet.columns, sheet.separatePOs); });
+  sheets.forEach((sheet, i) => { parts[`xl/worksheets/sheet${i + 1}.xml`] = worksheetXML(sheet.rows, sheet.columns, sheet); });
   return parts;
 }
 

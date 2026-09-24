@@ -16,6 +16,8 @@ PDF produces its own workbook with a **Purchase Orders** detail sheet and a
 | Unit Price | Numeric value under `Price` on the same item line. |
 | Total Qty for same PO | Sum of `Qty` for every unique item with the same PO in this PDF. |
 | Total Price for same PO | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with the same PO in this PDF. |
+| Total Qty for same SKU | Sum of `Qty` for every unique item with this SKU across all POs in this PDF. Repeat on matching detail rows; leave blank when the SKU is missing. |
+| Total Price for same SKU | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with this SKU across all POs in this PDF. Repeat on matching detail rows; leave blank when the SKU is missing. |
 | Requested Ship Date | Date under `Requested Ship`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 | Requested Delivery Date | Date under `Requested Delivery`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 
@@ -29,6 +31,13 @@ This sheet contains each nonblank SKU once, in first-seen order across the PDF.
 | Total Qty | Sum of `Qty` for every unique item with this SKU across all POs in this PDF. |
 | Unit Price | Source unit price shared by every item with this SKU across all POs in this PDF. Export fails with an error naming the SKU, conflicting prices, and PO numbers if any prices differ. |
 | Total Price | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with this SKU across all POs in this PDF. |
+
+The **All POs** list begins at row 4, two columns to the right of the last SKU
+summary column. With Total Price in D, **F4** contains `All POs`, and unique PO
+numbers occupy **F5** downward in their first-seen order in Purchase Orders.
+Column E stays empty. PO values are text, preserving leading zeros, and repeated
+POs appear only once. The list uses all extracted items, including those missing
+a SKU, and extends below the SKU table when needed. It is local to each PDF.
 
 ## Extraction mechanics
 
@@ -61,8 +70,8 @@ conversion failures directly and does not display a separate issues panel.
    pairs, keeping the first copy and warning on conflicting data, including
    unit prices and requested dates. Then sum quantities and calculated item
    prices independently by PO and by SKU. Decimal addition preserves fractional
-   quantities and cents. PO totals repeat on every matching detail row; SKU totals
-   appear once per SKU on the summary sheet, using the same calculated values.
+   quantities and cents. PO and SKU totals repeat on every matching detail row;
+   SKU totals also appear once per SKU on the summary sheet, using the same calculated values.
    SKU groups span POs within the PDF; files in a batch are never combined.
    Items with missing SKUs stay in the detail sheet and are excluded from the
    summary. Identifiers with different leading zeros remain distinct. Negative
@@ -79,7 +88,8 @@ conversion failures directly and does not display a separate issues panel.
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
 two decimal places. Both sheets have frozen headers and no header sort/filter
-dropdowns. Purchase Orders spans **A:I** and Summary spans **A:D**. Column widths fit the
+dropdowns. Purchase Orders spans **A:K**. The Summary SKU table spans **A:D**, with
+the All POs list in **F**. Column widths fit the
 data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the
@@ -92,7 +102,7 @@ visually separated block. Summary keeps one row per SKU in first-seen order,
 without spacer rows. Spacers are added only to Excel exports, including those
 inside ZIPs; they do not change extracted records, preview rows, or totals.
 
-Multiple items with the same PO or style remain separate detail rows. PO totals
+Multiple items with the same PO or style remain separate detail rows. PO and SKU totals
 are repeated values, not additive columns to sum again down the detail sheet.
 The SKU summary totals each SKU once within this workbook. The extraction and
 export limits remain 100,000 source lines per PDF.
@@ -108,7 +118,7 @@ The coordinate-based extraction foundation is ported from
 [AAfes_Pdf_to_Excel](https://github.com/JYS-Enterprise-Inc/AAfes_Pdf_to_Excel)
 at commit `56ef7bc2412249e4188d6196bae56cb80b845b83`. Internal source fields remain
 available for extraction parity and reconciliation; the preview and export use
-the nine detail fields above, with SKU totals exported to the summary sheet.
+the eleven detail fields above, with SKU totals also exported to the summary sheet.
 
 Synthetic fixtures verify extraction parity, multiple POs, continuation pages,
 duplicate lines, leading zeros, item-specific styles and quantities, calculated
