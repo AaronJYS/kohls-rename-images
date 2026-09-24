@@ -39,7 +39,7 @@ test("column headers and metadata labels ignore capitalization while source valu
   }
 });
 
-test("PO and SKU totals include each matching item at its own unit price", () => {
+test("PO and SKU totals retain item prices but conflicting SKU prices block export", async () => {
   const pages = [copy()[0]];
   pages[0].words.find((word) => word.text === "000765432").text = "003278934";
   pages[0].words.find((word) => word.text === "17.25" && word.top > 250).text = "20.00";
@@ -50,6 +50,23 @@ test("PO and SKU totals include each matching item at its own unit price", () =>
     assert.equal(row.po_total_price, 94.5);
     assert.equal(row.sku_total_qty, 5);
     assert.equal(row.sku_total_price, 94.5);
+  }
+  await assert.rejects(createWorkbook(records), /SKU 003278934 has conflicting unit prices: 17\.25 \(PO 0069749254\) and 20 \(PO 0069749254\)/);
+  assert.deepEqual(records.map((row) => row.price), [17.25, 20]);
+});
+
+test("SKU price conflicts across POs block Excel and ZIP downloads, including differences below a cent", async () => {
+  for (const [firstPrice, laterPrice] of [[17.25, 20], [0, 0.1], [17.251, 17.252]]) {
+    const pages = copy();
+    pages[0].words.find((word) => word.text === "17.25").text = String(firstPrice);
+    pages[3].words.find((word) => word.text === "17.25").text = String(laterPrice);
+    const { records } = extractPages(pages);
+    const message = `SKU 003278934 has conflicting unit prices: ${firstPrice} (PO 0069749254) and ${laterPrice} (PO 0069749253). Unit Price must be the same for this SKU across all purchase orders in the PDF.`;
+    await assert.rejects(createWorkbook(records), { message });
+    await assert.rejects(createWorkbookArchive([
+      { name: "valid.pdf", records: extractPages(fixtures).records },
+      { name: "conflicting.pdf", records },
+    ]), { message });
   }
 });
 
@@ -79,11 +96,11 @@ test("SKU summaries omit missing identifiers and keep leading-zero SKUs distinct
   ]);
   const zip = await globalThis.JSZip.loadAsync(await createWorkbook(records));
   const summary = await zip.file("xl/worksheets/sheet2.xml").async("string");
-  assert.match(summary, /dimension ref="A1:C3"/);
+  assert.match(summary, /dimension ref="A1:D3"/);
   assert.deepEqual([...summary.matchAll(/<t xml:space="preserve">(.*?)<\/t>/g)].map((match) => match[1]),
-    ["SKU", "Total Qty", "Total Price", "0001", "1"]);
+    ["SKU", "Total Qty", "Unit Price", "Total Price", "0001", "1"]);
   const blanks = await globalThis.JSZip.loadAsync(await createWorkbook(records.slice(2)));
-  assert.match(await blanks.file("xl/worksheets/sheet2.xml").async("string"), /dimension ref="A1:C1"/);
+  assert.match(await blanks.file("xl/worksheets/sheet2.xml").async("string"), /dimension ref="A1:D1"/);
 });
 
 test("printed totals and numeric footers cannot replace calculated item or group prices", () => {
@@ -324,17 +341,18 @@ assert s.find('s:autoFilter',ns).attrib['ref']=='A1:I5'
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'
 summary=E.fromstring(z.read('xl/worksheets/sheet2.xml'))
 rows=summary.findall('s:sheetData/s:row',ns)
-assert [c.find('.//s:t',ns).text for c in rows[0]]==['SKU','Total Qty','Total Price']
+assert [c.find('.//s:t',ns).text for c in rows[0]]==['SKU','Total Qty','Unit Price','Total Price']
 values=[]
 for row in rows[1:]:
-    sku,qty,price=row
+    sku,qty,unit_price,price=row
     assert sku.attrib['t']=='inlineStr'
     assert xfs[int(qty.attrib['s'])].attrib['numFmtId']=='0'
+    assert xfs[int(unit_price.attrib['s'])].attrib['numFmtId']=='4'
     assert xfs[int(price.attrib['s'])].attrib['numFmtId']=='4'
-    values.append([sku.find('.//s:t',ns).text,float(qty.find('s:v',ns).text),float(price.find('s:v',ns).text)])
-assert values==[['003278934',0.5,8.62],['000765432',3,51.75],['009999999',1000,17250]]
+    values.append([sku.find('.//s:t',ns).text,float(qty.find('s:v',ns).text),float(unit_price.find('s:v',ns).text),float(price.find('s:v',ns).text)])
+assert values==[['003278934',0.5,17.25,8.62],['000765432',3,17.25,51.75],['009999999',1000,17.25,17250]]
 assert summary.find('.//s:f',ns) is None
-assert summary.find('s:autoFilter',ns).attrib['ref']=='A1:C4'
+assert summary.find('s:autoFilter',ns).attrib['ref']=='A1:D4'
 assert summary.find('.//s:pane',ns).attrib['state']=='frozen'
 print(json.dumps({'detailRows':len(s.findall('.//s:row',ns)),'summaryRows':len(rows)}))
 `], { input: bytes, maxBuffer: 1024 * 1024 });
@@ -365,7 +383,7 @@ test("batch ZIP disambiguates filenames and keeps SKU totals within each workboo
     assert.ok(details.includes(`dimension ref="A1:I${results[index].records.length + 1}"`));
     const summary = await workbook.file("xl/worksheets/sheet2.xml").async("string");
     const totals = [...summary.matchAll(/<v>(.*?)<\/v>/g)].map((match) => Number(match[1]));
-    assert.deepEqual(totals, index === 0 ? [2, 34.5, 3, 51.75] : [-1, -17.25]);
+    assert.deepEqual(totals, index === 0 ? [2, 17.25, 34.5, 3, 17.25, 51.75] : [-1, 17.25, -17.25]);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");
   await assert.rejects(createWorkbook([]), /no extracted purchase orders/);

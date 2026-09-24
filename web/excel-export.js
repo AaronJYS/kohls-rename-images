@@ -9,6 +9,7 @@ const MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 const SKU_COLUMNS = [
   ["sku", "SKU", "text"],
   ["sku_total_qty", "Total Qty", "number"],
+  ["price", "Unit Price", "money"],
   ["sku_total_price", "Total Price", "money"],
 ];
 
@@ -68,9 +69,14 @@ export function workbookParts(records) {
     throw new Error("Export is limited to 100,000 source line items per PDF.");
   // Extraction already totals SKUs across this PDF's POs. Export each total
   // once, in first-seen order, without grouping items whose SKU is missing.
+  // A summary row must have one consistent unit price across matching items.
   const skuRows = new Map();
   for (const row of records) {
-    if (row.sku && !skuRows.has(row.sku)) skuRows.set(row.sku, row);
+    if (!row.sku) continue;
+    const first = skuRows.get(row.sku);
+    if (first && first.price !== row.price)
+      throw new Error(`SKU ${row.sku} has conflicting unit prices: ${first.price} (PO ${first.po}) and ${row.price} (PO ${row.po}). Unit Price must be the same for this SKU across all purchase orders in the PDF.`);
+    if (!first) skuRows.set(row.sku, row);
   }
   const sheets = [
     { name: "Purchase Orders", rows: records, columns: COLUMNS },

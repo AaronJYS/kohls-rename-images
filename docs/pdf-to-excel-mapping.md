@@ -27,6 +27,7 @@ This sheet contains each nonblank SKU once, in first-seen order across the PDF.
 | --- | --- |
 | SKU | Item SKU, preserved as text, including leading zeros. |
 | Total Qty | Sum of `Qty` for every unique item with this SKU across all POs in this PDF. |
+| Unit Price | Source unit price shared by every item with this SKU across all POs in this PDF. Export fails with an error naming the SKU, conflicting prices, and PO numbers if any prices differ. |
 | Total Price | Sum of `Unit Price × Qty`, rounded to cents per item, for every unique item with this SKU across all POs in this PDF. |
 
 ## Extraction mechanics
@@ -78,7 +79,7 @@ conversion failures directly and does not display a separate issues panel.
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
 two decimal places. Both sheets have frozen headers, with filters spanning
-**A:I** on Purchase Orders and **A:C** on SKU QTY Summed. Column widths fit the
+**A:I** on Purchase Orders and **A:D** on SKU QTY Summed. Column widths fit the
 data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the
@@ -88,6 +89,11 @@ Multiple items with the same PO or style remain separate detail rows. PO totals
 are repeated values, not additive columns to sum again down the detail sheet.
 The SKU summary totals each SKU once within this workbook. The extraction and
 export limits remain 100,000 source lines per PDF.
+Before creating an Excel file, export requires exact numeric equality of unit
+prices for each nonblank SKU, including differences smaller than one cent.
+Different textual formats of the same numeric price compare equally. A conflict
+blocks the download and shows the SKU, both prices, and their PO numbers. The
+same check applies to every workbook in a ZIP. Each PDF is checked independently.
 
 ## Compatibility and verification
 

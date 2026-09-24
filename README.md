@@ -56,6 +56,7 @@ per line item and these columns, in order, matching the preview:
 | --- | --- | --- |
 | SKU | Item SKU, with leading zeros preserved | Text |
 | Total Qty | Sum of Qty for all items with this SKU across POs in the PDF | Number |
+| Unit Price | Source unit price shared by all items with this SKU in the PDF | Number, two decimal places |
 | Total Price | Sum of item prices (Unit Price × Qty) for this SKU across POs in the PDF | Number, two decimal places |
 
 Both sheets have frozen headers, filters, and column widths that fit the data.
@@ -70,6 +71,9 @@ amounts and full PO totals do not replace these calculations. Duplicate PO/line
 pairs are counted once. Items missing a SKU remain in Purchase Orders and are
 excluded from the SKU summary. Repeated PO totals should not be summed again
 down the detail sheet.
+Every item with the same SKU must have the same unit price within its PDF.
+Conflicting prices block the Excel or ZIP download and display an error naming
+the SKU, both prices, and their PO numbers.
 Workbooks are downloaded through the browser; source
 PDFs are not changed. Duplicate output names inside ZIPs receive `_2`, `_3`, etc.
 
@@ -80,7 +84,7 @@ top-right header, detects table columns from their positions, groups words into
 rows with a 2.5-point tolerance, follows continuation pages, reads vendor styles
 and requested dates, removes repeated `(PO, line number)` pairs, and totals
 amounts within each PDF. Each workbook contains nine detail columns and a
-three-column SKU summary. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
+four-column SKU summary. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
 for layout anchors and derivations.
 
 Browser adaptations:
