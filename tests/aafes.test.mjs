@@ -299,7 +299,7 @@ ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
     'c':'http://schemas.openxmlformats.org/package/2006/content-types'}
 workbook=E.fromstring(z.read('xl/workbook.xml'))
 sheets=workbook.findall('s:sheets/s:sheet',ns)
-assert [sheet.attrib['name'] for sheet in sheets]==['Purchase Orders','SKU QTY Summed']
+assert [sheet.attrib['name'] for sheet in sheets]==['Purchase Orders','Summary']
 rels=E.fromstring(z.read('xl/_rels/workbook.xml.rels'))
 targets={r.attrib['Id']:r.attrib['Target'] for r in rels}
 types=E.fromstring(z.read('[Content_Types].xml'))

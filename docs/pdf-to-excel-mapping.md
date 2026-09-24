@@ -3,7 +3,7 @@
 The preview and export contain **one row per line item**, preserving source
 order and including each unique `(PO number, line number)` pair once. Each input
 PDF produces its own workbook with a **Purchase Orders** detail sheet and a
-**SKU QTY Summed** summary sheet.
+**Summary** sheet.
 
 ## Purchase Orders fields in export order
 
@@ -19,7 +19,7 @@ PDF produces its own workbook with a **Purchase Orders** detail sheet and a
 | Requested Ship Date | Date under `Requested Ship`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 | Requested Delivery Date | Date under `Requested Delivery`, carried across that PO's continuation pages. Display `yyyy/mm/dd`. |
 
-## SKU QTY Summed fields in export order
+## Summary fields in export order
 
 This sheet contains each nonblank SKU once, in first-seen order across the PDF.
 
@@ -79,7 +79,7 @@ conversion failures directly and does not display a separate issues panel.
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
 two decimal places. Both sheets have frozen headers, with filters spanning
-**A:I** on Purchase Orders and **A:D** on SKU QTY Summed. Column widths fit the
+**A:I** on Purchase Orders and **A:D** on Summary. Column widths fit the
 data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the

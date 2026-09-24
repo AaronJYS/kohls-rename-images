@@ -50,7 +50,7 @@ per line item and these columns, in order, matching the preview:
 | Requested Ship Date | Date under Requested Ship | Date (`yyyy/mm/dd`) |
 | Requested Delivery Date | Date under Requested Delivery | Date (`yyyy/mm/dd`) |
 
-**SKU QTY Summed** has one row per unique, nonblank SKU, in first-seen order:
+**Summary** has one row per unique, nonblank SKU, in first-seen order:
 
 | Column | Source / value | Excel type |
 | --- | --- | --- |
