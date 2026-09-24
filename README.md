@@ -59,7 +59,11 @@ per line item and these columns, in order, matching the preview:
 | Unit Price | Source unit price shared by all items with this SKU in the PDF | Number, two decimal places |
 | Total Price | Sum of item prices (Unit Price × Qty) for this SKU across POs in the PDF | Number, two decimal places |
 
-Both sheets have frozen headers, filters, and column widths that fit the data.
+Both sheets have frozen headers and column widths that fit the data, with no
+header sort/filter dropdowns. Purchase Orders inserts one blank row before each
+item whose PO differs from the previous item, preserving source order. There is
+no spacer before the first item or after the last. Summary keeps SKUs in
+first-seen order without spacer rows.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom
 borders, and regular headers. Date and number formats are preserved.
 PO, style, and SKU identifiers preserve leading zeros. Multiple items from the same

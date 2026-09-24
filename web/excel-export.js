@@ -33,8 +33,7 @@ function columnName(index) {
   return String.fromCharCode(65 + index);
 }
 
-function worksheetXML(records, columns) {
-  const last = `${columnName(columns.length - 1)}${records.length + 1}`;
+function worksheetXML(records, columns, separatePOs = false) {
   const widths = columns.map(([key, label]) => {
     let width = Math.max(10, label.length + 3);
     for (const row of records.slice(0, 1000)) {
@@ -43,9 +42,13 @@ function worksheetXML(records, columns) {
     return width;
   });
   const header = `<row r="1">${columns.map(([, label], i) => textCell(`${columnName(i)}1`, label, 0)).join("")}</row>`;
+  let rowNumber = 1;
   const rows = records.map((row, index) => {
-    return `<row r="${index + 2}">${columns.map(([key, , type], col) => {
-      const ref = `${columnName(col)}${index + 2}`;
+    const spacer = separatePOs && index > 0 && row.po !== records[index - 1].po
+      ? `<row r="${++rowNumber}"/>` : "";
+    rowNumber++;
+    return `${spacer}<row r="${rowNumber}">${columns.map(([key, , type], col) => {
+      const ref = `${columnName(col)}${rowNumber}`;
       const value = row[key];
       if (value === null || value === undefined || value === "") return `<c r="${ref}" s="1"/>`;
       if ((type === "number" || type === "money") && Number.isFinite(value))
@@ -60,7 +63,8 @@ function worksheetXML(records, columns) {
       return textCell(ref, value);
     }).join("")}</row>`;
   }).join("");
-  return `${XML}<worksheet xmlns="${NS}"><dimension ref="A1:${last}"/><sheetViews><sheetView showGridLines="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join("")}</cols><sheetData>${header}${rows}</sheetData><autoFilter ref="A1:${last}"/></worksheet>`;
+  const last = `${columnName(columns.length - 1)}${rowNumber}`;
+  return `${XML}<worksheet xmlns="${NS}"><dimension ref="A1:${last}"/><sheetViews><sheetView showGridLines="1" workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${widths.map((width, i) => `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`).join("")}</cols><sheetData>${header}${rows}</sheetData></worksheet>`;
 }
 
 export function workbookParts(records) {
@@ -79,7 +83,7 @@ export function workbookParts(records) {
     if (!first) skuRows.set(row.sku, row);
   }
   const sheets = [
-    { name: "Purchase Orders", rows: records, columns: COLUMNS },
+    { name: "Purchase Orders", rows: records, columns: COLUMNS, separatePOs: true },
     { name: "Summary", rows: [...skuRows.values()], columns: SKU_COLUMNS },
   ];
   const parts = {
@@ -89,7 +93,7 @@ export function workbookParts(records) {
     "xl/_rels/workbook.xml.rels": `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL}/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}<Relationship Id="rId${sheets.length + 1}" Type="${REL}/styles" Target="styles.xml"/></Relationships>`,
     "xl/styles.xml": `${XML}<styleSheet xmlns="${NS}"><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy/mm/dd"/></numFmts><fonts count="1"><font><sz val="11"/><color auto="1"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`,
   };
-  sheets.forEach((sheet, i) => { parts[`xl/worksheets/sheet${i + 1}.xml`] = worksheetXML(sheet.rows, sheet.columns); });
+  sheets.forEach((sheet, i) => { parts[`xl/worksheets/sheet${i + 1}.xml`] = worksheetXML(sheet.rows, sheet.columns, sheet.separatePOs); });
   return parts;
 }
 

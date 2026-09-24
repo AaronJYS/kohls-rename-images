@@ -78,12 +78,19 @@ conversion failures directly and does not display a separate issues panel.
 
 Identifiers use text cells, quantities and prices use numeric cells, and both
 requested dates use real Excel date cells formatted `yyyy/mm/dd`. Prices display
-two decimal places. Both sheets have frozen headers, with filters spanning
-**A:I** on Purchase Orders and **A:D** on Summary. Column widths fit the
+two decimal places. Both sheets have frozen headers and no header sort/filter
+dropdowns. Purchase Orders spans **A:I** and Summary spans **A:D**. Column widths fit the
 data. Cells use plain Excel styling with visible gridlines, regular
 headers, no colored fills, and no custom borders. Formula-looking identifiers
 remain text. Missing values are blank in Excel and shown as an em dash in the
 preview.
+
+Purchase Orders preserves source order and inserts one empty row whenever the
+next item's PO differs from the preceding item's PO. It adds no spacer before
+the first item or after the last. A PO that appears again later starts a new
+visually separated block. Summary keeps one row per SKU in first-seen order,
+without spacer rows. Spacers are added only to Excel exports, including those
+inside ZIPs; they do not change extracted records, preview rows, or totals.
 
 Multiple items with the same PO or style remain separate detail rows. PO totals
 are repeated values, not additive columns to sum again down the detail sheet.
