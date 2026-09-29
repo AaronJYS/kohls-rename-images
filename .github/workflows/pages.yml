@@ -46,6 +46,7 @@ jobs:
           node --check web/hamricks-worker.js
           node --check web/hamricks-export.js
           node --check web/hamricks-app.js
+          node --check scripts/version-asset-urls.mjs
       - name: Verify image conversion, PDF extraction, and spreadsheet conversion
         run: npm test
 
@@ -75,8 +76,18 @@ jobs:
         with:
           ref: beta
           path: beta
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
       - name: Assemble production and beta sites
         run: |
+          # New URLs for each commit make a reload fetch updated modules and workers.
+          # A checkout without the script is published unversioned.
+          for checkout in production beta; do
+            if [ -f "$checkout/scripts/version-asset-urls.mjs" ]; then
+              node "$checkout/scripts/version-asset-urls.mjs" "$checkout/web" "$(git -C "$checkout" rev-parse --short=12 HEAD)"
+            fi
+          done
           mkdir -p site/beta
           cp -a production/web/. site/
           cp -a beta/web/. site/beta/

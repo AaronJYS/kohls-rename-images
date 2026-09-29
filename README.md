@@ -269,6 +269,8 @@ npm test
 - `web/hamricks-export.js` — typed 940 Excel output for programmatic use and validation.
 - `web/hamricks-app.js` — workbook selection, worksheet/store previews, and downloads.
 - `web/index.html` and `web/styles.css` — interface and responsive styling.
+- `scripts/version-asset-urls.mjs` — adds the deployed commit to module, worker,
+  and stylesheet URLs during Pages deployment.
 - [Shared interface conventions](docs/ui-conventions.md) — typography, spacing,
   reusable controls, and wording rules for all tabs.
 - `tests/` — Python parity checks and filesystem integration tests using temporary
@@ -283,6 +285,8 @@ npm test
   file/worker failures, cancellation, timeout, retry, and preview window boundaries.
 - `tests/hamricks-preview.test.mjs` — preview reuse, complete scrolling, worksheet
   changes, clearing, text resizing, and browser API fallbacks.
+- `tests/version-asset-urls.test.mjs` — deploy URL versioning, including modules
+  and workers loaded after the page, with vendor files left unchanged.
 
 Hamrick’s regression fixtures are generated in memory. Stress-test inputs,
 downloads, screenshots, and reports belong in an OS temporary directory outside
@@ -299,6 +303,16 @@ In **Settings → Pages**, choose **GitHub Actions** as the source. The
 `.github/workflows/pages.yml` workflow tests changes and publishes **only `web/`**
 after a successful push to `main`. Pull requests run tests without deploying.
 The Python source, tests, and local files are not part of the published site.
+
+Before publishing the production and beta sites, the workflow appends
+`?v=<commit>` to each first-party module, worker, and stylesheet URL. GitHub
+Pages lets browsers reuse files for up to 10 minutes, and even a hard refresh
+does not refetch files requested after the page loads, such as the Excel export
+module and the Hamrick’s worker. With versioned URLs, the browser never reuses
+files from an earlier deploy after a reload. GitHub's CDN ignores the `?v=`
+query, so a reload loads the new deploy once GitHub has replaced the CDN's
+cached files. Opening the site from a bookmark within 10 minutes of an earlier
+visit can still show the previous deploy until the page is reloaded.
 
 ### Image converter behavior and limits
 
