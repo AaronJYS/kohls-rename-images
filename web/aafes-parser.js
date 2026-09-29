@@ -246,9 +246,10 @@ function lineTotal(qty, price) {
 }
 
 // Called after duplicate PO/line pairs have been removed. Each map is local to
-// one PDF; SKU totals span all POs in that PDF and repeat on each matching item.
+// one PDF; SKU and style totals span all POs in that PDF and repeat on each
+// matching item.
 export function addGroupedTotals(records) {
-  const groups = [["po", new Map()], ["sku", new Map()]];
+  const groups = [["po", new Map()], ["sku", new Map()], ["vendor_style", new Map()]];
   for (const row of records) {
     const qty = decimal(row.qty), price = decimal(row.total_price);
     for (const [key, totals] of groups) {
@@ -266,7 +267,7 @@ export function addGroupedTotals(records) {
     }
     for (const row of records) {
       const total = totals.get(row[key]);
-      // A missing SKU cannot identify a group of matching items.
+      // A missing SKU or style cannot identify a group of matching items.
       row[`${key}_total_qty`] = total?.qty ?? null;
       row[`${key}_total_price`] = total?.price ?? null;
     }

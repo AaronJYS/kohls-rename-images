@@ -39,7 +39,7 @@ test("column headers and metadata labels ignore capitalization while source valu
   }
 });
 
-test("PO and SKU totals retain item prices but conflicting SKU prices block export", async () => {
+test("PO and SKU totals retain item prices; only conflicting style prices block export", async () => {
   const pages = [copy()[0]];
   pages[0].words.find((word) => word.text === "000765432").text = "003278934";
   pages[0].words.find((word) => word.text === "17.25" && word.top > 250).text = "20.00";
@@ -51,17 +51,26 @@ test("PO and SKU totals retain item prices but conflicting SKU prices block expo
     assert.equal(row.sku_total_qty, 5);
     assert.equal(row.sku_total_price, 94.5);
   }
-  await assert.rejects(createWorkbook(records), /SKU 003278934 has conflicting unit prices: 17\.25 \(PO 0069749254\) and 20 \(PO 0069749254\)/);
-  assert.deepEqual(records.map((row) => row.price), [17.25, 20]);
+  // Summary rows are styles, so a shared SKU may carry one price per style.
+  const zip = await globalThis.JSZip.loadAsync(await createWorkbook(records));
+  const summary = await zip.file("xl/worksheets/sheet2.xml").async("string");
+  assert.deepEqual([...summary.matchAll(/<c r="A\d+"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)].map((match) => match[1]),
+    ["Vendor's Style", "BX06772.BK", "22003.NV"]);
+  assert.deepEqual([...summary.matchAll(/<v>(.*?)<\/v>/g)].map((match) => Number(match[1])), [2, 17.25, 34.5, 3, 20, 60]);
+  pages[0].words.find((word) => word.text === "22003.NV").text = "BX06772.BK";
+  const sameStyle = extractPages(pages).records;
+  await assert.rejects(createWorkbook(sameStyle), /Vendor's Style BX06772\.BK has conflicting unit prices: 17\.25 \(PO 0069749254\) and 20 \(PO 0069749254\)/);
+  assert.deepEqual(sameStyle.map((row) => row.price), [17.25, 20]);
 });
 
-test("SKU price conflicts across POs block Excel and ZIP downloads, including differences below a cent", async () => {
+test("style price conflicts across POs block Excel and ZIP downloads, including differences below a cent", async () => {
   for (const [firstPrice, laterPrice] of [[17.25, 20], [0, 0.1], [17.251, 17.252]]) {
     const pages = copy();
     pages[0].words.find((word) => word.text === "17.25").text = String(firstPrice);
     pages[3].words.find((word) => word.text === "17.25").text = String(laterPrice);
+    pages[3].words.find((word) => word.text === "RETURN.BK").text = "BX06772.BK";
     const { records } = extractPages(pages);
-    const message = `SKU 003278934 has conflicting unit prices: ${firstPrice} (PO 0069749254) and ${laterPrice} (PO 0069749253). Unit Price must be the same for this SKU across all purchase orders in the PDF.`;
+    const message = `Vendor's Style BX06772.BK has conflicting unit prices: ${firstPrice} (PO 0069749254) and ${laterPrice} (PO 0069749253). Unit Price must be the same for this style across all purchase orders in the PDF.`;
     await assert.rejects(createWorkbook(records), { message });
     await assert.rejects(createWorkbookArchive([
       { name: "valid.pdf", records: extractPages(fixtures).records },
@@ -83,22 +92,23 @@ test("group totals keep fractional quantities exact and include zero and negativ
   ]);
 });
 
-test("SKU summaries keep leading-zero identifiers distinct and list POs even when SKUs are missing", async () => {
+test("style summaries keep leading-zero identifiers distinct and list POs even when styles are missing", async () => {
   const records = [
-    { po: "001", sku: "0001", qty: 1, total_price: 10 },
-    { po: "001", sku: "1", qty: 2, total_price: 20 },
-    { po: "001", sku: "", qty: 3, total_price: 30 },
-    { po: "002", sku: "", qty: 4, total_price: 40 },
+    { po: "001", sku: "123", vendor_style: "0001", qty: 1, total_price: 10 },
+    { po: "001", sku: "123", vendor_style: "1", qty: 2, total_price: 20 },
+    { po: "001", sku: "456", vendor_style: "", qty: 5, total_price: 50 },
+    { po: "002", sku: "", vendor_style: "", qty: 4, total_price: 40 },
   ];
   addGroupedTotals(records);
-  assert.deepEqual(records.map((row) => [row.po_total_qty, row.po_total_price, row.sku_total_qty, row.sku_total_price]), [
-    [6, 60, 1, 10], [6, 60, 2, 20], [6, 60, null, null], [4, 40, null, null],
+  assert.deepEqual(records.map((row) => [row.po_total_qty, row.po_total_price, row.sku_total_qty, row.sku_total_price,
+    row.vendor_style_total_qty, row.vendor_style_total_price]), [
+    [8, 80, 3, 30, 1, 10], [8, 80, 3, 30, 2, 20], [8, 80, 5, 50, null, null], [4, 40, null, null, null, null],
   ]);
   const zip = await globalThis.JSZip.loadAsync(await createWorkbook(records));
   const summary = await zip.file("xl/worksheets/sheet2.xml").async("string");
   assert.match(summary, /dimension ref="A1:F6"/);
   assert.deepEqual([...summary.matchAll(/<t xml:space="preserve">(.*?)<\/t>/g)].map((match) => match[1]),
-    ["SKU", "Total Qty", "Unit Price", "Total Price", "0001", "1", "All POs", "001", "002"]);
+    ["Vendor's Style", "Total Qty", "Unit Price", "Total Price", "0001", "1", "All POs", "001", "002"]);
   const blanks = await globalThis.JSZip.loadAsync(await createWorkbook(records.slice(2)));
   const blankSummary = await blanks.file("xl/worksheets/sheet2.xml").async("string");
   assert.match(blankSummary, /dimension ref="A1:F6"/);
@@ -283,7 +293,7 @@ test("PDF text items split into positioned words using measured widths", () => {
   ]);
 });
 
-test("XLSX preserves typed details and SKU totals with PO spacers, frozen headers, and no filter dropdowns", async () => {
+test("XLSX preserves typed details, SKU totals, and style summaries with PO spacers, frozen headers, and no filter dropdowns", async () => {
   const records = extractPages(fixtures).records;
   records[3].vendor_style = '=HYPERLINK("https://example.com") & <style>';
   records[3].qty = -1.5;
@@ -356,18 +366,18 @@ assert s.find('s:autoFilter',ns) is None
 assert s.find('.//s:pane',ns).attrib['state']=='frozen'
 summary=E.fromstring(z.read('xl/worksheets/sheet2.xml'))
 rows=summary.findall('s:sheetData/s:row',ns)
-assert [c.find('.//s:t',ns).text for c in rows[0]]==['SKU','Total Qty','Unit Price','Total Price']
+assert [c.find('.//s:t',ns).text for c in rows[0]]==["Vendor's Style",'Total Qty','Unit Price','Total Price']
 values=[]
 for row in rows[1:]:
-    sku_cells=[c for c in row if c.attrib['r'][0] in 'ABCD']
-    if not sku_cells: continue
-    sku,qty,unit_price,price=sku_cells
-    assert sku.attrib['t']=='inlineStr'
+    style_cells=[c for c in row if c.attrib['r'][0] in 'ABCD']
+    if not style_cells: continue
+    style,qty,unit_price,price=style_cells
+    assert style.attrib['t']=='inlineStr'
     assert xfs[int(qty.attrib['s'])].attrib['numFmtId']=='0'
     assert xfs[int(unit_price.attrib['s'])].attrib['numFmtId']=='4'
     assert xfs[int(price.attrib['s'])].attrib['numFmtId']=='4'
-    values.append([sku.find('.//s:t',ns).text,float(qty.find('s:v',ns).text),float(unit_price.find('s:v',ns).text),float(price.find('s:v',ns).text)])
-assert values==[['003278934',0.5,17.25,8.62],['000765432',3,17.25,51.75],['009999999',1000,17.25,17250]]
+    values.append([style.find('.//s:t',ns).text,float(qty.find('s:v',ns).text),float(unit_price.find('s:v',ns).text),float(price.find('s:v',ns).text)])
+assert values==[['BX06772.BK',2,17.25,34.5],['22003.NV',3,17.25,51.75],['70000.CG',1000,17.25,17250],['=HYPERLINK("https://example.com") & <style>',-1.5,17.25,-25.88]]
 summary_cells={c.attrib['r']:c for c in summary.findall('.//s:c',ns)}
 assert summary_cells['F4'].find('.//s:t',ns).text=='All POs'
 assert [summary_cells[f'F{i}'].find('.//s:t',ns).text for i in [5,6]]==['0069749254','0069749253']
@@ -399,7 +409,8 @@ test("export preserves blank missing dates", async () => {
 test("batch ZIP disambiguates filenames and preserves per-file totals, source order, and PO spacers", async () => {
   const repeatedPOs = extractPages(fixtures).records;
   const [first, second, continuation, laterPO] = repeatedPOs;
-  // Return to an earlier PO after another group, with a new SKU in that later PO.
+  // Return to an earlier PO after another group. The added SKUs reuse existing
+  // styles, so Summary combines them with the other items of each style.
   const reordered = [
     laterPO, { ...laterPO, line_no: "00002", sku: "000000001" },
     first, second, continuation,
@@ -431,7 +442,13 @@ test("batch ZIP disambiguates filenames and preserves per-file totals, source or
     assert.deepEqual([...details.matchAll(/<row r="(\d+)"\/>/g)].map((match) => Number(match[1])), index === 2 ? [4, 10] : []);
     const summary = await workbook.file("xl/worksheets/sheet2.xml").async("string");
     assert.doesNotMatch(summary, /<autoFilter\b|<row r="\d+"\/>/);
-    assert.ok(summary.includes(`dimension ref="A1:F${[5, 5, 7][index]}"`));
+    assert.ok(summary.includes(`dimension ref="A1:F${[5, 5, 6][index]}"`));
+    assert.deepEqual([...summary.matchAll(/<c r="A\d+"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)]
+      .slice(1).map((match) => match[1]), [
+      ["BX06772.BK", "22003.NV"],
+      ["RETURN.BK"],
+      ["RETURN.BK", "BX06772.BK", "22003.NV", "70000.CG"],
+    ][index]);
     assert.deepEqual([...summary.matchAll(/<c r="F(\d+)"[^>]*><is><t xml:space="preserve">(.*?)<\/t>/g)]
       .map((match) => [Number(match[1]), match[2]]), [
       [[4, "All POs"], [5, "0069749254"]],
@@ -442,7 +459,7 @@ test("batch ZIP disambiguates filenames and preserves per-file totals, source or
     assert.deepEqual(totals, [
       [2, 17.25, 34.5, 3, 17.25, 51.75],
       [-1, 17.25, -17.25],
-      [0, 17.25, 0, -1, 17.25, -17.25, 3, 17.25, 51.75, 1000, 17.25, 17250, 2, 17.25, 34.5, 2, 17.25, 34.5],
+      [-3, 17.25, -51.75, 6, 17.25, 103.5, 3, 17.25, 51.75, 1000, 17.25, 17250],
     ][index]);
   }
   assert.equal(outputName("../../orders.PDF"), ".._.._orders_extracted.xlsx");

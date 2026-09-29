@@ -52,40 +52,40 @@ per line item and these columns, in order, matching the preview:
 | Requested Ship Date | Date under Requested Ship | Date (`yyyy/mm/dd`) |
 | Requested Delivery Date | Date under Requested Delivery | Date (`yyyy/mm/dd`) |
 
-**Summary** has one row per unique, nonblank SKU, in first-seen order:
+**Summary** has one row per unique, nonblank Vendor's Style, in first-seen order:
 
 | Column | Source / value | Excel type |
 | --- | --- | --- |
-| SKU | Item SKU, with leading zeros preserved | Text |
-| Total Qty | Sum of Qty for all items with this SKU across POs in the PDF | Number |
-| Unit Price | Source unit price shared by all items with this SKU in the PDF | Number, two decimal places |
-| Total Price | Sum of item prices (Unit Price × Qty) for this SKU across POs in the PDF | Number, two decimal places |
+| Vendor's Style | Item's Vendor's Style, with leading zeros preserved | Text |
+| Total Qty | Sum of Qty for all items with this style across POs in the PDF | Number |
+| Unit Price | Source unit price shared by all items with this style in the PDF | Number, two decimal places |
+| Total Price | Sum of item prices (Unit Price × Qty) for this style across POs in the PDF | Number, two decimal places |
 
 Summary also lists **All POs** in **F4**, two columns to the right of Total Price,
 with column E left blank. Unique PO numbers start at **F5** in their first-seen
-order in Purchase Orders. The list includes POs whose items have missing SKUs
+order in Purchase Orders. The list includes POs whose items have missing styles
 and preserves leading zeros. Each workbook lists only its own PDF's POs.
 
 Both sheets have frozen headers and column widths that fit the data, with no
 header sort/filter dropdowns. Purchase Orders inserts one blank row before each
 item whose PO differs from the previous item, preserving source order. There is
-no spacer before the first item or after the last. Summary keeps SKUs in
+no spacer before the first item or after the last. Summary keeps styles in
 first-seen order without spacer rows.
 Cells use plain Excel styling with visible gridlines, no colored fills or custom
 borders, and regular headers. Date and number formats are preserved.
 PO, style, and SKU identifiers preserve leading zeros. Multiple items from the same
 PO remain separate rows, in source order. PO and SKU totals repeat on each matching
-item row; SKU totals also appear once in the summary. All totals are calculated separately
+item row; the summary totals each Vendor's Style once. All totals are calculated separately
 for each PDF. Price totals sum
 each item's unit price times quantity, rounded to cents per item; printed line
 amounts and full PO totals do not replace these calculations. Duplicate PO/line
-pairs are counted once. Items missing a SKU remain in Purchase Orders and are
-excluded from the SKU summary. Their SKU total cells stay blank. Repeated PO and
-SKU totals should not be summed again
+pairs are counted once. Items missing a SKU remain in Purchase Orders with blank
+SKU total cells. Items missing a Vendor's Style remain in Purchase Orders and are
+excluded from the summary. Repeated PO and SKU totals should not be summed again
 down the detail sheet.
-Every item with the same SKU must have the same unit price within its PDF.
+Every item with the same Vendor's Style must have the same unit price within its PDF.
 Conflicting prices block the Excel or ZIP download and display an error naming
-the SKU, both prices, and their PO numbers.
+the style, both prices, and their PO numbers.
 Workbooks are downloaded through the browser; source
 PDFs are not changed. Duplicate output names inside ZIPs receive `_2`, `_3`, etc.
 
@@ -96,7 +96,7 @@ top-right header, detects table columns from their positions, groups words into
 rows with a 2.5-point tolerance, follows continuation pages, reads vendor styles
 and requested dates, removes repeated `(PO, line number)` pairs, and totals
 amounts within each PDF. Each workbook contains eleven detail columns and a
-four-column SKU summary with an All POs list. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
+four-column Vendor's Style summary with an All POs list. See [the extraction mapping](docs/pdf-to-excel-mapping.md)
 for layout anchors and derivations.
 
 Browser adaptations:

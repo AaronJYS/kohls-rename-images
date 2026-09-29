@@ -6,11 +6,11 @@ const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 const NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-const SKU_COLUMNS = [
-  ["sku", "SKU", "text"],
-  ["sku_total_qty", "Total Qty", "number"],
+const SUMMARY_COLUMNS = [
+  ["vendor_style", "Vendor's Style", "text"],
+  ["vendor_style_total_qty", "Total Qty", "number"],
   ["price", "Unit Price", "money"],
-  ["sku_total_price", "Total Price", "money"],
+  ["vendor_style_total_price", "Total Price", "money"],
 ];
 
 function escapeXML(value) {
@@ -41,7 +41,7 @@ function worksheetXML(records, columns, { separatePOs = false, poList } = {}) {
     }
     return width;
   });
-  // Keep one empty column between the SKU totals and the PO list.
+  // Keep one empty column between the style totals and the PO list.
   const poColumn = poList ? columnName(columns.length + 1) : null;
   if (poList) widths.push(10, poList.reduce((width, po) =>
     Math.max(width, Math.min(45, String(po).length + 3)), 10));
@@ -73,7 +73,7 @@ function worksheetXML(records, columns, { separatePOs = false, poList } = {}) {
       return textCell(ref, value);
     }).join("")}${poListCell(rowNumber)}</row>`;
   });
-  // The PO list can extend below the last SKU, or exist with no usable SKUs.
+  // The PO list can extend below the last style, or exist with no usable styles.
   if (poList) {
     while (rowNumber < poList.length + 4) {
       rowNumber++;
@@ -89,21 +89,21 @@ export function workbookParts(records) {
   if (!records.length) throw new Error("There are no extracted purchase orders to export.");
   if (records.length > 100000)
     throw new Error("Export is limited to 100,000 source line items per PDF.");
-  // Extraction already totals SKUs across this PDF's POs. Export each total
-  // once, in first-seen order, without grouping items whose SKU is missing.
-  // A summary row must have one consistent unit price across matching items.
-  const skuRows = new Map(), poValues = new Set();
+  // Extraction already totals vendor styles across this PDF's POs. Export each
+  // total once, in first-seen order, without grouping items whose style is
+  // missing. A summary row must have one consistent unit price across matching items.
+  const styleRows = new Map(), poValues = new Set();
   for (const row of records) {
     if (row.po) poValues.add(row.po);
-    if (!row.sku) continue;
-    const first = skuRows.get(row.sku);
+    if (!row.vendor_style) continue;
+    const first = styleRows.get(row.vendor_style);
     if (first && first.price !== row.price)
-      throw new Error(`SKU ${row.sku} has conflicting unit prices: ${first.price} (PO ${first.po}) and ${row.price} (PO ${row.po}). Unit Price must be the same for this SKU across all purchase orders in the PDF.`);
-    if (!first) skuRows.set(row.sku, row);
+      throw new Error(`Vendor's Style ${row.vendor_style} has conflicting unit prices: ${first.price} (PO ${first.po}) and ${row.price} (PO ${row.po}). Unit Price must be the same for this style across all purchase orders in the PDF.`);
+    if (!first) styleRows.set(row.vendor_style, row);
   }
   const sheets = [
     { name: "Purchase Orders", rows: records, columns: COLUMNS, separatePOs: true },
-    { name: "Summary", rows: [...skuRows.values()], columns: SKU_COLUMNS, poList: [...poValues] },
+    { name: "Summary", rows: [...styleRows.values()], columns: SUMMARY_COLUMNS, poList: [...poValues] },
   ];
   const parts = {
     "[Content_Types].xml": `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`,
