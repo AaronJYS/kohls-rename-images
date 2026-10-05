@@ -192,7 +192,8 @@ def assign_roles(files, notes=None, label=""):
     """
     roles = {}
     taken = set()
-    notes = notes if notes is not None else []
+    if notes is None:
+        notes = []
 
     # Pass 1 — explicit overrides win over everything.
     for path, _ in files:
@@ -237,7 +238,6 @@ def assign_roles(files, notes=None, label=""):
         while alt_label(alt_n) in taken:
             alt_n += 1
         roles[path] = alt_label(alt_n)
-        taken.add(roles[path])
         alt_n += 1
 
     return roles

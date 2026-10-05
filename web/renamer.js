@@ -137,7 +137,6 @@ function assignRoles(files, config, notes, label) {
     if (roles.has(file)) continue;
     while (taken.has(altLabel(alt))) alt++;
     roles.set(file, altLabel(alt));
-    taken.add(altLabel(alt));
     alt++;
   }
   return roles;

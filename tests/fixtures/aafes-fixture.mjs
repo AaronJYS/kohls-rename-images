@@ -53,7 +53,7 @@ function page({ po = "0069749254", dates = true, table = true, ack = "7/17/2026"
     text("Deliver to receiving dock", 28, 430);
     text(amount, 540, 510);
   };
-  return { text, item, total };
+  return { item, total };
 }
 
 const first = page();

@@ -31,7 +31,7 @@ export function columnName(column) {
 }
 
 function checkedValue(cell, row, column) {
-  if (cell?.f && (cell.v === undefined || cell.v === null))
+  if (cell?.f && cell.v == null)
     throw new Error(`Cell ${columnName(column)}${row + 1} has a formula without a saved result. Recalculate and save it in Excel first.`);
   if (cell?.t === "e") throw new Error(`Cell ${columnName(column)}${row + 1} contains an Excel error. Correct it and save the workbook again.`);
   return raw(cell);
@@ -39,7 +39,7 @@ function checkedValue(cell, row, column) {
 
 function quantity(cell, row, column) {
   const value = checkedValue(cell, row, column);
-  if (value === undefined || value === null) return 0;
+  if (value == null) return 0;
   const token = String(value).trim();
   if (!token) return 0;
   const numeric = typeof value === "number" || /^[+-]?(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?$/.test(token);

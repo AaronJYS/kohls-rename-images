@@ -42,8 +42,8 @@ export function groupOrders(records) {
     }
     for (const [key, label] of orderFields) {
       const value = row[key];
-      if (value === null || value === undefined || value === "") continue;
-      if (order[key] === null || order[key] === undefined || order[key] === "") order[key] = value;
+      if (value == null || value === "") continue;
+      if (order[key] == null || order[key] === "") order[key] = value;
       else if (order[key] !== value) order.conflicting_fields.add(label);
     }
     order.line_items.push(row);
@@ -350,9 +350,9 @@ export function createExtractor({ processedDate = localDate() } = {}) {
           store, source_page: pageNumber,
         };
         const key = `${currentPO}:${row.line_no}`;
-        if (seen.has(key)) {
+        const first = seen.get(key);
+        if (first) {
           duplicateCount++;
-          const first = seen.get(key);
           if (["sku", "upc", "qty", "price", "amount", "vendor_style", "requested_ship", "requested_del"].some((field) => first[field] !== row[field]))
             warn(pageNumber, `PO ${currentPO}, line ${row.line_no} differs from an earlier copy. The first value was kept.`);
           continue;

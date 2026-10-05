@@ -46,6 +46,9 @@ jobs:
           node --check web/hamricks-worker.js
           node --check web/hamricks-export.js
           node --check web/hamricks-app.js
+          node --check web/synapse-parser.js
+          node --check web/synapse-price-grid.js
+          node --check web/synapse-app.js
           node --check scripts/version-asset-urls.mjs
       - name: Verify image conversion, PDF extraction, and spreadsheet conversion
         run: npm test

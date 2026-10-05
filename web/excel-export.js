@@ -60,7 +60,7 @@ function worksheetXML(records, columns, { separatePOs = false, poList } = {}) {
     return `${spacer}<row r="${rowNumber}">${columns.map(([key, , type], col) => {
       const ref = `${columnName(col)}${rowNumber}`;
       const value = row[key];
-      if (value === null || value === undefined || value === "") return `<c r="${ref}" s="1"/>`;
+      if (value == null || value === "") return `<c r="${ref}" s="1"/>`;
       if ((type === "number" || type === "money") && Number.isFinite(value))
         return `<c r="${ref}" s="${type === "number" ? 2 : 3}"><v>${value}</v></c>`;
       if (type === "date") {

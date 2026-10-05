@@ -45,7 +45,7 @@ function renderFiles() {
 }
 
 function formatValue(type, value) {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value == null || value === "") return "—";
   if (type === "money") return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (type === "date") return value.replaceAll("-", "/");
   return value;
@@ -87,12 +87,7 @@ function render() {
   $("pdf-drop-zone").setAttribute("aria-busy", String(busy));
   $("pdf-preview").hidden = !ready.length;
   $("pdf-preview-file-control").hidden = ready.length < 2;
-  $("pdf-preview-file").replaceChildren(...ready.map((file) => {
-    const option = document.createElement("option");
-    option.value = String(file.id);
-    option.textContent = file.file.name;
-    return option;
-  }));
+  $("pdf-preview-file").replaceChildren(...ready.map((file) => new Option(file.file.name, String(file.id))));
   $("pdf-preview-file").title = file?.file.name ?? "";
   if (!file) return;
   $("pdf-preview-file").value = String(selectedId);

@@ -1,6 +1,6 @@
 # Shared interface conventions
 
-All three tabs use the component rules and tokens in `web/styles.css`.
+All tabs use the component rules and tokens in `web/styles.css`.
 Tool-specific selectors should describe data or layout differences, not duplicate
 shared typography, spacing, or controls.
 
@@ -26,10 +26,17 @@ shared typography, spacing, or controls.
 - Pickers share padding, icon spacing, centered content, and 192 × 48 px minimum
   selection buttons. Main actions have the same 48 px minimum height. Selects and
   text buttons have a 44 px minimum height.
+- Text buttons use the shared control radius, including their keyboard-focus
+  outline. Controls and table scroll regions share the 3 px focus-width token;
+  editable grid cells keep that outline inset and their corners square.
+- Keep compact heading actions beside their heading as text wraps. The action
+  retains its touch-target width instead of dropping into a separate header row.
 - Optional CSV selection uses a compact 44 px secondary button with the same
   `Select CSV` / `Change CSV` wording as the other pickers.
 - Table cells share 12 px vertical and 16 px horizontal padding. Outer columns
   align with panel gutters. Numeric columns align right.
+- When a table meets an action bar directly, the action bar supplies the single
+  divider. Do not stack a final-row border against it, including for empty tables.
 - Selected files use `file-selection`, `file-row`, `file-name`, and `file-status`.
   PDF queues may contain several rows; a selected workbook uses one row.
 - Preview selectors belong in the review heading. Use `preview-control`, a visible
@@ -42,6 +49,16 @@ shared typography, spacing, or controls.
 - Action bars use `action-copy` and `download-actions`. Empty status containers
   do not reserve vertical space. Buttons align right on desktop and fill the
   available width on mobile.
+- Clipboard input uses `text-area` with the shared font, control radius, and focus
+  outline. Synapse reuses the preview table and action bar; its totals use the tool
+  accent background and the same right-aligned numeric columns as the other tables.
+  Incomplete review rows reuse the shared error colors, with missing-cell dashes
+  and accessible issue descriptions so color is not the only indication.
+- Input stacks use one 8 px gap between labels, helper text, and fields. Textareas
+  do not add their own margin on top of the container gap.
+- The Synapse price grid uses the shared table headings, numeric alignment, and
+  control tokens. Its editable cells have inset focus outlines, a row-number
+  gutter, and an expanding body within the standard scroll height.
 - Preserve purposeful layout differences: the image tool has naming examples and
   options, PDF has a multi-file queue, and Hamrick’s previews all populated rows.
   Table widths reflect their contents. Do not add removed Hamrick’s controls or notes.

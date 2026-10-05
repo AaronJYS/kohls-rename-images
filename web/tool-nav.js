@@ -3,6 +3,7 @@ const tools = {
   "#image-name-converter": { id: "image-tool", name: "images", title: "Kohl’s Image Renamer" },
   "#pdf-to-excel": { id: "pdf-tool", name: "pdf", title: "AAFES PDF to Excel" },
   "#hamricks-po-to-940": { id: "hamricks-tool", name: "hamricks", title: "Hamrick’s PO to 940" },
+  "#synapse-order-verifier": { id: "synapse-tool", name: "synapse", title: "Synapse Order Verifier" },
 };
 
 function showTool() {

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Rename Kohl's product images, convert AAFES PDFs to Excel, and convert Hamrick's purchase orders to 940 templates. Process files on your device."
+      content="Rename Kohl's product images, convert AAFES PDFs to Excel, convert Hamrick's purchase orders to 940 templates, and verify Synapse order quantities. Process data on your device."
     />
     <meta
       http-equiv="Content-Security-Policy"
@@ -18,6 +18,7 @@
     <script type="module" src="./tool-nav.js"></script>
     <script type="module" src="./pdf-app.js"></script>
     <script type="module" src="./hamricks-app.js"></script>
+    <script type="module" src="./synapse-app.js"></script>
   </head>
   <body>
     <header class="site-header">
@@ -34,6 +35,10 @@
         <a class="tool-link" href="#hamricks-po-to-940">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H5v18h14V8Z M14 3v5h5 M8 12h8m-8 4h8m-4-4v7"/></svg>
           Hamrick’s PO to 940
+        </a>
+        <a class="tool-link" href="#synapse-order-verifier">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v4H9Z M8 13l3 3 5-6"/></svg>
+          Synapse Order Verifier
         </a>
       </nav>
     </header>
@@ -281,7 +286,7 @@
               <select id="pdf-preview-file" class="select-field" aria-controls="pdf-preview-body"></select>
             </div>
           </div>
-          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 9 columns"><table class="data-table pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
+          <div class="table-frame"><div class="table-scroll" tabindex="0" aria-label="Purchase order line item preview, scroll horizontally to see all 11 columns"><table class="data-table pdf-table"><thead><tr id="pdf-table-head"></tr></thead><tbody id="pdf-preview-body"></tbody></table></div></div>
           <div class="table-footer"><span id="pdf-page-label" class="muted small"></span><div id="pdf-pagination" class="pagination"><button id="pdf-previous-page" class="text-button" type="button">Previous</button><button id="pdf-next-page" class="text-button" type="button">Next</button></div></div>
           <div class="action-bar">
             <div class="action-copy"><p id="pdf-action-title" class="muted" role="status" aria-live="polite"></p></div>
@@ -331,6 +336,70 @@
               <div class="action-copy"><p id="hamricks-download-status" class="muted" role="status" aria-live="polite"></p></div>
               <div class="download-actions"><button id="download-940-csv" class="button primary" type="button">Download CSV<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg></button></div>
             </div>
+          </div>
+        </section>
+      </div>
+      <div id="synapse-tool" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">SYNAPSE ORDER VERIFIER</p>
+            <h1>Verify your order quantities</h1>
+            <p class="intro">Match Synapse order quantities with wholesale prices, then copy to Excel.</p>
+          </div>
+        </div>
+        <div class="workspace">
+        <section class="source-panel" aria-labelledby="synapse-source-heading">
+          <div class="panel-heading synapse-source-heading">
+            <h2 id="synapse-source-heading"><span class="step">01</span>Paste Synapse rows</h2>
+            <button id="synapse-clear" class="text-button" type="button" aria-label="Clear Synapse rows" disabled>Clear</button>
+          </div>
+          <div class="synapse-input-area">
+            <textarea id="synapse-input" class="text-area" rows="6" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Order data" aria-describedby="synapse-message"></textarea>
+          </div>
+          <div id="synapse-message" class="notice error panel-notice" role="status" aria-live="polite" hidden></div>
+        </section>
+        <section class="source-panel" aria-labelledby="synapse-price-heading">
+          <div class="panel-heading synapse-source-heading">
+            <h2 id="synapse-price-heading"><span class="step">02</span>Paste price list</h2>
+            <button id="synapse-price-clear" class="text-button" type="button" aria-label="Clear wholesale prices" disabled>Clear</button>
+          </div>
+          <div class="synapse-input-area">
+            <div class="table-scroll synapse-price-scroll">
+              <table id="synapse-price-grid" class="synapse-price-grid" aria-label="Editable price list" aria-describedby="synapse-price-message">
+                <colgroup><col class="synapse-price-row-number"><col><col class="synapse-price-column"></colgroup>
+                <thead><tr><th scope="col" aria-label="Row">#</th><th scope="col">Item</th><th scope="col" class="numeric">Price</th></tr></thead>
+                <tbody id="synapse-price-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="synapse-price-message" class="notice error panel-notice" role="status" aria-live="polite" hidden></div>
+        </section>
+        </div>
+        <section id="synapse-preview" class="preview-panel" aria-labelledby="synapse-preview-heading" hidden>
+          <div class="panel-heading preview-heading">
+            <h2 id="synapse-preview-heading"><span class="step">03</span>Review your quantities</h2>
+            <span id="synapse-row-count" class="muted small" role="status" aria-live="polite"></span>
+          </div>
+          <div id="synapse-review-message" class="notice error panel-notice" role="status" aria-live="polite" hidden></div>
+          <div class="table-frame">
+            <div id="synapse-table-scroll" class="table-scroll" tabindex="0" aria-label="Order quantities and prices; scroll to see all columns, rows, and totals">
+              <table class="data-table synapse-table">
+                <thead><tr><th scope="col">Item</th><th scope="col" class="numeric">Quantity Ship</th><th scope="col" class="numeric">Quantity Picked</th><th scope="col" class="numeric">Wholesale Unit Price</th></tr></thead>
+                <tbody id="synapse-preview-body"></tbody>
+                <tfoot><tr><th scope="row">TOTAL</th><td id="synapse-total-ship" class="numeric"></td><td id="synapse-total-picked" class="numeric"></td><td id="synapse-total-price" class="numeric" title="Sum of the available unit prices."></td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+          <div class="action-bar">
+            <div class="action-copy"><p id="synapse-copy-status" class="muted" role="status" aria-live="polite"></p></div>
+            <div class="download-actions">
+              <button id="synapse-copy" class="button primary" type="button" disabled><span>Copy for Excel</span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg></button>
+            </div>
+          </div>
+          <div id="synapse-copy-fallback" class="synapse-input-area" hidden>
+            <label for="synapse-copy-text" class="field-label">Copyable table</label>
+            <p id="synapse-copy-help" class="muted">Copy the selected text, then paste into Excel.</p>
+            <textarea id="synapse-copy-text" class="text-area" rows="6" wrap="off" readonly aria-describedby="synapse-copy-help" spellcheck="false"></textarea>
           </div>
         </section>
       </div>

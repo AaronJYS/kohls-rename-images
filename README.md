@@ -2,8 +2,9 @@
 
 ## Web app
 
-A static browser app with three tools, selected from the top navigation:
-**Image name converter**, **PDF to Excel**, and **Hamrick’s PO to 940**. All file processing happens on
+A static browser app with four tools, selected from the top navigation:
+**Image name converter**, **PDF to Excel**, **Hamrick’s PO to 940**, and
+**Synapse Order Verifier**. All processing happens on
 the user's device. No files are uploaded and no installation is required.
 Switching tools keeps the current selections and work in memory; reloading the
 page clears them.
@@ -227,6 +228,51 @@ SheetJS CE 0.20.3 and its legacy codepage support are bundled locally with their
 license in `web/vendor/sheetjs/`. Customer samples and generated outputs are not
 included in the repository. All committed Hamrick’s tests use synthetic data.
 
+### Synapse Order Verifier
+
+1. Copy a Synapse grid with its header row and up to 100 order entries.
+2. Paste into **Order data**, then use the editable **Item / Price** grid under
+   **Paste price list**. Paste a list of items into an Item cell, a list of prices
+   into a Price cell, or a two-column Excel range into an Item cell. Values fill
+   downward from that cell; blank cells and rows preserve alignment. Rows expand
+   automatically up to 500 entries, with a blank row available for the next item.
+   Click any cell to edit it; Tab moves between cells and Enter or the up/down
+   arrows move within a column. Lists can include their column headers.
+   The earlier `Item / Quantity / Price` format is also accepted: Item and Price
+   fill the grid, and Quantity is ignored.
+   In each Item code, spaces and hyphens become periods, repeated periods collapse,
+   and a period remains only when immediately followed by an ASCII letter (A–Z or
+   a–z). Cleanup applies only to newly pasted Item text. Manual edits, including
+   spaces and hyphens, stay as entered, even when more rows are pasted later.
+   Prices keep their decimals and signs; tabs and line
+   breaks preserve columns and rows.
+3. Review **Item**, **Quantity Ship**, **Quantity Picked**, and **Wholesale Unit
+   Price**. Prices come from the single price-list entry with the same Item.
+   After this conversion, matching requires an exact Item, including suffixes
+   and casing.
+4. Press **Copy for Excel**, then paste into an Excel worksheet. Only **Item**,
+   **Quantity Ship**, and **Wholesale Unit Price** are copied, with numeric prices
+   and **no headers or TOTAL row**. The selected fallback text uses the same
+   output. Selecting text in the review and using the normal copy command copies
+   only the selection. Rows with both **Quantity Ship** and **Quantity Picked**
+   equal to zero are omitted from the Excel copy but stay visible in the review.
+   Other rows are retained, and missing export cells stay blank. If every row has
+   both quantities at zero, there is nothing to copy and the copy button is disabled.
+
+Rows remain in their original order, including repeated items. Columns are matched
+by header name; empty source cells and quoted descriptions do not shift the data.
+Numeric quantities support decimals, signs, and comma thousands separators. Totals
+use exact decimal arithmetic and stay visible in the review; the price total is
+the sum of the available unit prices. A missing Item, quantity, or price highlights
+the review row red. Unmatched Items and duplicate price-list entries leave the
+price blank and highlight the row, even when duplicate prices agree. Zero is a
+valid value. Totals include available values; an entirely missing column has no total.
+Nonnumeric values, missing required Synapse headers, and pastes over the row limits
+are rejected. Each paste is limited to 2 MB. A paste that exceeds the grid's
+row or column limits leaves existing cells intact. An invalid edit removes stale
+results. Both inputs stay in memory when switching tabs; each **Clear** button
+removes its own input, and a page reload clears both.
+
 ### Run locally
 
 From this repository:
@@ -268,6 +314,9 @@ npm test
 - `web/hamricks-preview.js` — cached previews with bounded rendering for large worksheets.
 - `web/hamricks-export.js` — typed 940 Excel output for programmatic use and validation.
 - `web/hamricks-app.js` — workbook selection, worksheet/store previews, and downloads.
+- `web/synapse-parser.js` — order/price grid validation, unique Item matching, exact totals, and Excel-ready text/HTML.
+- `web/synapse-app.js` — paste inputs, price/quantity review, missing-value highlighting, and clipboard export.
+- `web/synapse-price-grid.js` — editable Item/Price cells, column/range paste, and automatic row expansion.
 - `web/index.html` and `web/styles.css` — interface and responsive styling.
 - `scripts/version-asset-urls.mjs` — adds the deployed commit to module, worker,
   and stylesheet URLs during Pages deployment.
@@ -287,6 +336,10 @@ npm test
   changes, clearing, text resizing, and browser API fallbacks.
 - `tests/version-asset-urls.test.mjs` — deploy URL versioning, including modules
   and workers loaded after the page, with vendor files left unchanged.
+- `tests/synapse.test.mjs` — synthetic clipboard grids, unique price matching,
+  100/500-row limits, missing values, exact totals, and three-column clipboard formats.
+- `tests/synapse-app.test.mjs` — native selection copying and the dedicated Excel
+  export remain independent.
 
 Hamrick’s regression fixtures are generated in memory. Stress-test inputs,
 downloads, screenshots, and reports belong in an OS temporary directory outside
