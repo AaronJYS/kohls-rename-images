@@ -4,14 +4,11 @@ import assert from "node:assert/strict";
 // Run the app's event wiring without adding a browser dependency to Node tests.
 class Element extends EventTarget {
   value = "";
-  textContent = "";
   children = [];
-  attributes = new Map();
   selectionStart = 0;
   selectionEnd = 0;
-  selectionDirection = "none";
-  setAttribute(name, value) { this.attributes.set(name, value); }
-  removeAttribute(name) { this.attributes.delete(name); }
+  setAttribute() {}
+  removeAttribute() {}
   append(...children) { children.forEach((child) => { child.parent = this; }); this.children.push(...children); }
   get lastElementChild() { return this.children.at(-1); }
   remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); }

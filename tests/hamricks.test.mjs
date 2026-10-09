@@ -38,9 +38,8 @@ const splitSheet = () => withDetails([
   ["Total", "", "", 8, 2664, 9, 0],
 ]);
 const fullRow = (cells) => [...cells, ...Array(29 - cells.length).fill("")];
-const workbookBytes = (sheets, bookType = "xlsx", date1904 = false) => {
+const workbookBytes = (sheets, bookType = "xlsx") => {
   const workbook = XLSX.utils.book_new();
-  workbook.Workbook = { WBProps: { date1904 } };
   for (const [name, rows] of sheets) XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), name);
   return XLSX.write(workbook, { type: "array", bookType });
 };

@@ -310,9 +310,7 @@ assert z.testzip() is None
 for name in z.namelist():
     if name.endswith(('.xml','.rels')): E.fromstring(z.read(name))
 ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
-    'r':'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
-    'p':'http://schemas.openxmlformats.org/package/2006/relationships',
-    'c':'http://schemas.openxmlformats.org/package/2006/content-types'}
+    'r':'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
 workbook=E.fromstring(z.read('xl/workbook.xml'))
 sheets=workbook.findall('s:sheets/s:sheet',ns)
 assert [sheet.attrib['name'] for sheet in sheets]==['Purchase Orders','Summary']

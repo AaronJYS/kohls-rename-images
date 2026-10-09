@@ -13,13 +13,13 @@ function previewHarness() {
     cancelAnimationFrame(id) { frames.delete(id); },
     addEventListener(type, callback) { if (type === "resize") resizeListeners.add(callback); },
     removeEventListener(type, callback) { if (type === "resize") resizeListeners.delete(callback); },
-    getComputedStyle: () => ({ fontSize: "13px", fontWeight: "400", fontFamily: "sans-serif", letterSpacing: "0px", paddingLeft: "16px", paddingRight: "16px" }),
+    getComputedStyle: () => ({ fontSize: "13px", letterSpacing: "0px", paddingLeft: "16px", paddingRight: "16px" }),
   };
   const document = { defaultView: window, createElement: (tag) => new Element(tag), createDocumentFragment: () => new Element("fragment") };
   class Element {
     constructor(tag) {
       this.tag = tag; this.ownerDocument = document; this.children = []; this.attributes = new Map();
-      this.listeners = new Map(); this.className = ""; this.textContent = "";
+      this.listeners = new Map(); this.className = "";
       this.style = { removeProperty: (name) => { delete this.style[name === "table-layout" ? "tableLayout" : name]; } };
     }
     append(...elements) {
